@@ -13,7 +13,8 @@ using LinearAlgebra,
     StenoGraphs,
     LazyArtifacts,
     DelimitedFiles,
-    DataFrames
+    DataFrames,
+    PackageExtensionCompat
 
 export StenoGraphs, @StenoGraph, meld
 
@@ -184,4 +185,9 @@ export AbstractSem,
     ←,
     ↔,
     ⇔
+
+function __init__()
+    @require_extensions
+end
+
 end
