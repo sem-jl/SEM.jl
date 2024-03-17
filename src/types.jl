@@ -116,6 +116,18 @@ abstract type SemImply end
 abstract type SemImplySymbolic <: SemImply end
 
 """
+State of `SemImply` that corresponds to the specific SEM parameter values.
+
+Contains the necessary vectors and matrices for calculating the SEM
+objective, gradient and hessian (whichever is requested).
+"""
+abstract type SemImplyState end
+
+imply(state::SemImplyState) = state.imply
+MeanStructure(state::SemImplyState) = MeanStructure(imply(state))
+ApproximateHessian(state::SemImplyState) = ApproximateHessian(imply(state))
+
+"""
     Sem(;observed = SemObservedData, imply = RAM, loss = SemML, kwargs...)
 
 Constructor for the basic `Sem` type.
