@@ -26,22 +26,18 @@ end
 
 # Ensemble Models --------------------------------------------------------------------------
 function start_simple(model::SemEnsemble; kwargs...)
-    start_vals = []
+    start_vals = fill(0.0, nparams(model))
 
     for sem in model.sems
-        push!(start_vals, start_simple(sem; kwargs...))
+        sem_start_vals = start_simple(sem; kwargs...)
+        for (i, val) in enumerate(sem_start_vals)
+            if !iszero(val)
+                start_vals[i] = val
+            end
+        end
     end
 
-    has_start_val = [.!iszero.(start_val) for start_val in start_vals]
-
-    start_val = similar(start_vals[1])
-    start_val .= 0.0
-
-    for (j, indices) in enumerate(has_start_val)
-        start_val[indices] .= start_vals[j][indices]
-    end
-
-    return start_val
+    return start_vals
 end
 
 function start_simple(
