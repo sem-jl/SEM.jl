@@ -183,7 +183,12 @@ function evaluate!(
         ∇A = implied.∇A
         ∇S = implied.∇S
 
-        C = F⨉I_A⁻¹' * (I - Σ⁻¹Σₒ) * Σ⁻¹ * F⨉I_A⁻¹
+        # reuse Σ⁻¹Σₒ to calculate I-Σ⁻¹Σₒ
+        one_Σ⁻¹Σₒ = Σ⁻¹Σₒ
+        one_Σ⁻¹Σₒ .*= -1
+        one_Σ⁻¹Σₒ[diagind(one_Σ⁻¹Σₒ)] .+= 1
+
+        C = F⨉I_A⁻¹' * one_Σ⁻¹Σₒ * Σ⁻¹ * F⨉I_A⁻¹
         mul!(gradient, ∇A', vec(C * S * I_A⁻¹'), 2, 0)
         mul!(gradient, ∇S', vec(C), 1, 1)
 
