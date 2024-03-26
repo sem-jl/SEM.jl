@@ -62,6 +62,17 @@ function latent_vars(ram::RAMMatrices)
     end
 end
 
+function variance_params(ram::RAMMatrices)
+    S_diaginds = Set(diagind(ram.S))
+    varparams = Vector{Symbol}()
+    for (i, param) in enumerate(ram.params)
+        if any(∈(S_diaginds), param_occurences(ram.S, i))
+            push!(varparams, param)
+        end
+    end
+    return unique!(varparams)
+end
+
 ############################################################################################
 ### Constructor
 ############################################################################################
