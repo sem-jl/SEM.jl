@@ -601,3 +601,78 @@ lavaan_param_values(
     lav_col,
     lav_group,
 )
+
+"""
+    lavaan_model(partable::ParameterTable)
+
+Generate lavaan model definition from a `partable`.
+"""
+function lavaan_model(partable::ParameterTable)
+    latent_vars = Set(partable.variables.latent)
+    observed_vars = Set(partable.variables.observed)
+
+    variance_defs = Dict{Symbol, IOBuffer}()
+    latent_dep_defs = Dict{Symbol, IOBuffer}()
+    latent_regr_defs = Dict{Symbol, IOBuffer}()
+    observed_regr_defs = Dict{Symbol, IOBuffer}()
+
+    model = IOBuffer()
+    for (from, to, rel, param, value, free) in zip(
+        partable.columns.from,
+        partable.columns.to,
+        partable.columns.relation,
+        partable.columns.param,
+        partable.columns.value_fixed,
+        partable.columns.free,
+    )
+        function append_param(io)
+            if free
+                @assert param != :const
+                param == Symbol("") || write(io, "$param * ")
+            else
+                write(io, "$value * ")
+            end
+        end
+        function append_rhs(io)
+            if position(io) > 0
+                write(io, " + ")
+            end
+            append_param(io)
+            write(io, "$to")
+        end
+
+        if from == Symbol("1")
+            write(model, "$to ~ ")
+            append_param(model)
+            write(model, "1\n")
+        else
+            if rel == :↔
+                variance_def = get!(() -> IOBuffer(), variance_defs, from)
+                append_rhs(variance_def)
+            elseif rel == :→
+                if (from ∈ latent_vars) && (to ∈ observed_vars)
+                    latent_dep_def = get!(() -> IOBuffer(), latent_dep_defs, from)
+                    append_rhs(latent_dep_def)
+                elseif (from ∈ latent_vars) && (to ∈ latent_vars)
+                    latent_regr_def = get!(() -> IOBuffer(), latent_regr_defs, from)
+                    append_rhs(latent_regr_def)
+                else
+                    observed_regr_def = get!(() -> IOBuffer(), observed_regr_defs, from)
+                    append_rhs(observed_regr_def)
+                end
+            end
+        end
+    end
+    function write_rules(io, defs, relation)
+        vars = sort!(collect(keys(defs)))
+        for var in vars
+            write(io, String(var), " ", relation, " ")
+            write(io, String(take!(defs[var])), "\n")
+        end
+    end
+    write_rules(model, latent_dep_defs, "=~")
+    write_rules(model, latent_regr_defs, "~")
+    write_rules(model, observed_regr_defs, "~")
+    write_rules(model, variance_defs, "~~")
+    return String(take!(model))
+end
