@@ -2,12 +2,6 @@
 ### Expectation Maximization Algorithm
 ############################################################################################
 
-# An EM Algorithm for MVN-distributed Data with missing values
-# Adapted from supplementary Material to the book Machine Learning: A Probabilistic Perspective
-# Copyright (2010) Kevin Murphy and Matt Dunham
-# found at https://github.com/probml/pmtk3/blob/master/toolbox/BasicModels/gauss/sub/gaussMissingFitEm.m
-# and at https://github.com/probml/pmtk3/blob/master/toolbox/Algorithms/optimization/emAlgo.m
-
 # Type to store Expectation Maximization result --------------------------------------------
 mutable struct EmMVNModel{A, b, B}
     Σ::A
@@ -17,7 +11,6 @@ end
 
 # what about random restarts?
 
-# outer function ---------------------------------------------------------------------------
 """
     em_mvn(;
         observed::SemObservedMissing,
@@ -28,6 +21,12 @@ end
 
 Estimates the covariance matrix and mean vector of the normal distribution via expectation maximization for `observed`.
 Overwrites the statistics stored in `observed`.
+
+Uses the EM algorithm for MVN-distributed data with missing values
+adapted from the supplementary material to the book *Machine Learning: A Probabilistic Perspective*,
+copyright (2010) Kevin Murphy and Matt Dunham: see
+[*gaussMissingFitEm.m*](https://github.com/probml/pmtk3/blob/master/toolbox/BasicModels/gauss/sub/gaussMissingFitEm.m) and
+[*emAlgo.m*](https://github.com/probml/pmtk3/blob/master/toolbox/Algorithms/optimization/emAlgo.m) scripts.
 """
 function em_mvn(
     observed::SemObservedMissing;
