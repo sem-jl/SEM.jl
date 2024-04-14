@@ -308,7 +308,8 @@ end
 ### fiml
 ############################################################################################
 
-observed = SemObservedMissing(specification = spec_mean, data = dat_missing)
+observed =
+    SemObservedMissing(specification = spec_mean, data = dat_missing, rtol_em = 1e-10)
 
 fiml = SemFIML(observed = observed, specification = spec_mean)
 
