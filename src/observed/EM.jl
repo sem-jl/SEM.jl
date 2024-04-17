@@ -39,19 +39,20 @@ function em_mvn(
 )
     nobs_vars = nobserved_vars(patterns[1])
 
-    ### precompute for full cases
+    # precompute for full cases
     𝔼x_full = zeros(nobs_vars)
     𝔼xxᵀ_full = zeros(nobs_vars, nobs_vars)
-    if nmissed_vars(patterns[1]) == 0
-        fullpat = patterns[1]
-        sum!(reshape(𝔼x_full, 1, nobs_vars), fullpat.data)
-        mul!(𝔼xxᵀ_full, fullpat.data', fullpat.data)
-    else
-        @warn "No full cases pattern found"
+    nsamples_full = 0
+    for pat in patterns
+        if nmissed_vars(pat) == 0
+            𝔼x_full .+= sum(pat.data, dims = 2)
+            mul!(𝔼xxᵀ_full, pat.data, pat.data', 1, 1)
+            nsamples_full += nsamples(pat)
+        end
     end
-
-    # ess = 𝔼x, 𝔼xxᵀ, ismissing, missingRows, nsamps
-    # estepFn = (em_model, data) -> estep(em_model, data, EXsum, EXXsum, ismissing, missingRows, nsamps)
+    if nsamples_full == 0
+        @warn "No full cases in data"
+    end
 
     # initialize
     Σ₀, μ = start_em(patterns; kwargs...)
@@ -128,8 +129,8 @@ function em_step!(
         𝔼xxᵀuo = fill!(similar(Σuo), 0)
         𝔼xxᵀuu = n_obs(pat) * (Σ₀[u, u] - Σuo * (Σoo_chol \ Σuo'))
 
-        # loop trough data
-        @inbounds for rowdata in eachrow(pat.data)
+        # loop through observations
+        @inbounds for rowdata in eachcol(pat.data)
             mul!(𝔼xᵢu, Σuo, Σoo_chol \ (rowdata - μo))
             𝔼xᵢu .+= μu
             mul!(𝔼xxᵀuu, 𝔼xᵢu, 𝔼xᵢu', 1, 1)
