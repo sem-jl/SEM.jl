@@ -62,6 +62,8 @@ function em_mvn(
 
     iter = 0
     converged = false
+    Δμ_rel = NaN
+    ΔΣ_rel = NaN
     while !converged && (iter < max_iter_em)
         em_step!(Σ, μ, Σ_prev, μ_prev, patterns, 𝔼x_full, 𝔼xxᵀ_full)
 
@@ -83,7 +85,7 @@ function em_mvn(
     end
 
     if !converged
-        @warn "EM Algorithm for MVN missing data did not converge in $iter iterations.\n" *
+        @warn "EM Algorithm for MVN missing data did not converge in $iter iterations (ΔΣ/Σ=$(ΔΣ_rel) Δμ/μ=$(Δμ_rel)).\n" *
               "Likelihood for FIML is not interpretable.\n" *
               "Maybe try passing different starting values via 'start_em = ...' "
     else
