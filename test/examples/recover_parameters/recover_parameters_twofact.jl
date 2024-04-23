@@ -63,7 +63,9 @@ Random.seed!(1234)
 x = transpose(rand(true_dist, 100_000))
 semobserved = SemObservedData(data = x, specification = nothing)
 
-loss_ml = SemLoss(SemML(; observed = semobserved, nparams = length(start)))
+loss_ml = SemLoss(
+    SemML(; observed = semobserved, specification = ram_matrices, nparams = length(start)),
+)
 
 model_ml = Sem(semobserved, imply_ml, loss_ml)
 objective!(model_ml, true_val)

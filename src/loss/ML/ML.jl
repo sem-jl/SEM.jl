@@ -27,29 +27,43 @@ Analytic gradients are available, and for models without a meanstructure, also a
 ## Implementation
 Subtype of `SemLossFunction`.
 """
-struct SemML{HE <: HessianEval, INV, M, M2} <: SemLossFunction
+struct SemML{HE <: HessianEval, M} <: SemLossFunction
     hessianeval::HE
-    Σ⁻¹::INV
-    Σ⁻¹Σₒ::M
-    meandiff::M2
 
-    SemML{HE}(args...) where {HE <: HessianEval} =
-        new{HE, map(typeof, args)...}(HE(), args...)
+    # pre-allocated arrays to store intermediate results in evaluate!()
+    obsXobs_1::M
+    obsXobs_2::M
+    obsXobs_3::M
+    obsXvar_1::M
+    varXvar_1::M
+    varXvar_2::M
+    varXvar_3::M
 end
 
 ############################################################################################
 ### Constructors
 ############################################################################################
 
-function SemML(; observed::SemObserved, approximate_hessian::Bool = false, kwargs...)
-    obsmean = obs_mean(observed)
-    obscov = obs_cov(observed)
-    meandiff = isnothing(obsmean) ? nothing : copy(obsmean)
+function SemML(;
+    observed::SemObserved,
+    specification::SemSpecification,
+    approximate_hessian::Bool = false,
+    kwargs...,
+)
+    he = approximate_hessian ? ApproxHessian() : ExactHessian()
+    obsXobs = parent(obs_cov(observed))
+    nobs = nobserved_vars(specification)
+    nvar = nvars(specification)
 
-    return SemML{approximate_hessian ? ApproxHessian : ExactHessian}(
-        similar(parent(obscov)),
-        similar(parent(obscov)),
-        meandiff,
+    return SemML{typeof(he), typeof(obsXobs)}(
+        he,
+        similar(obsXobs),
+        similar(obsXobs),
+        similar(obsXobs),
+        similar(obsXobs, (nobs, nvar)),
+        similar(obsXobs, (nvar, nvar)),
+        similar(obsXobs, (nvar, nvar)),
+        similar(obsXobs, (nvar, nvar)),
     )
 end
 
@@ -76,10 +90,8 @@ function evaluate!(
 
     Σ = implied.Σ
     Σₒ = obs_cov(observed(model))
-    Σ⁻¹Σₒ = semml.Σ⁻¹Σₒ
-    Σ⁻¹ = semml.Σ⁻¹
 
-    copyto!(Σ⁻¹, Σ)
+    Σ⁻¹ = copy!(semml.obsXobs_1, Σ)
     Σ_chol = cholesky!(Symmetric(Σ⁻¹); check = false)
     if !isposdef(Σ_chol)
         #@warn "∑⁻¹ is not positive definite"
@@ -90,7 +102,7 @@ function evaluate!(
     end
     ld = logdet(Σ_chol)
     Σ⁻¹ = LinearAlgebra.inv!(Σ_chol)
-    mul!(Σ⁻¹Σₒ, Σ⁻¹, Σₒ)
+    Σ⁻¹Σₒ = mul!(semml.obsXobs_2, Σ⁻¹, Σₒ)
     isnothing(objective) || (objective = ld + tr(Σ⁻¹Σₒ))
 
     if MeanStruct(implied) === HasMeanStruct
@@ -103,12 +115,15 @@ function evaluate!(
             ∇Σ = implied.∇Σ
             ∇μ = implied.∇μ
             μ₋ᵀΣ⁻¹ = μ₋' * Σ⁻¹
-            mul!(gradient, ∇Σ', vec(Σ⁻¹ - Σ⁻¹Σₒ * Σ⁻¹ - μ₋ᵀΣ⁻¹'μ₋ᵀΣ⁻¹))
+            J = copyto!(semml.obsXobs_3, Σ⁻¹)
+            mul!(J, Σ⁻¹Σₒ, Σ⁻¹, -1, 1)
+            mul!(J, μ₋ᵀΣ⁻¹', μ₋ᵀΣ⁻¹, -1, 1)
+            mul!(gradient, ∇Σ', vec(J))
             mul!(gradient, ∇μ', μ₋ᵀΣ⁻¹', -2, 1)
         end
     elseif !isnothing(gradient) || !isnothing(hessian)
         ∇Σ = implied.∇Σ
-        Σ⁻¹ΣₒΣ⁻¹ = Σ⁻¹Σₒ * Σ⁻¹
+        Σ⁻¹ΣₒΣ⁻¹ = mul!(semml.obsXobs_3, Σ⁻¹Σₒ, Σ⁻¹)
         J = vec(Σ⁻¹ - Σ⁻¹ΣₒΣ⁻¹)'
         if !isnothing(gradient)
             mul!(gradient, ∇Σ', J')
@@ -149,10 +164,8 @@ function evaluate!(
 
     Σ = implied.Σ
     Σₒ = obs_cov(observed(model))
-    Σ⁻¹Σₒ = semml.Σ⁻¹Σₒ
-    Σ⁻¹ = semml.Σ⁻¹
 
-    copyto!(Σ⁻¹, Σ)
+    Σ⁻¹ = copy!(semml.obsXobs_1, Σ)
     Σ_chol = cholesky!(Symmetric(Σ⁻¹); check = false)
     if !isposdef(Σ_chol)
         #@warn "Σ⁻¹ is not positive definite"
@@ -163,7 +176,7 @@ function evaluate!(
     end
     ld = logdet(Σ_chol)
     Σ⁻¹ = LinearAlgebra.inv!(Σ_chol)
-    mul!(Σ⁻¹Σₒ, Σ⁻¹, Σₒ)
+    Σ⁻¹Σₒ = mul!(semml.obsXobs_2, Σ⁻¹, Σₒ)
 
     if !isnothing(objective)
         objective = ld + tr(Σ⁻¹Σₒ)
@@ -185,11 +198,25 @@ function evaluate!(
 
         # reuse Σ⁻¹Σₒ to calculate I-Σ⁻¹Σₒ
         one_Σ⁻¹Σₒ = Σ⁻¹Σₒ
-        one_Σ⁻¹Σₒ .*= -1
+        lmul!(-1, one_Σ⁻¹Σₒ)
         one_Σ⁻¹Σₒ[diagind(one_Σ⁻¹Σₒ)] .+= 1
 
-        C = F⨉I_A⁻¹' * one_Σ⁻¹Σₒ * Σ⁻¹ * F⨉I_A⁻¹
-        mul!(gradient, ∇A', vec(C * mul!(similar(C), S, I_A⁻¹')), 2, 0)
+        C = mul!(
+            semml.varXvar_1,
+            F⨉I_A⁻¹',
+            mul!(
+                semml.obsXvar_1,
+                Symmetric(mul!(semml.obsXobs_3, one_Σ⁻¹Σₒ, Σ⁻¹)),
+                F⨉I_A⁻¹,
+            ),
+        )
+        mul!(
+            gradient,
+            ∇A',
+            vec(mul!(semml.varXvar_3, Symmetric(C), mul!(semml.varXvar_2, S, I_A⁻¹'))),
+            2,
+            0,
+        )
         mul!(gradient, ∇S', vec(C), 1, 1)
 
         if MeanStruct(implied) === HasMeanStruct
@@ -201,8 +228,14 @@ function evaluate!(
             μ₋ᵀΣ⁻¹ = μ₋' * Σ⁻¹
             k = μ₋ᵀΣ⁻¹ * F⨉I_A⁻¹
             mul!(gradient, ∇M', k', -2, 1)
-            mul!(gradient, ∇A', vec(k' * (I_A⁻¹ * (M + S * k'))'), -2, 1)
-            mul!(gradient, ∇S', vec(k'k), -1, 1)
+            mul!(
+                gradient,
+                ∇A',
+                vec(mul!(semml.varXvar_1, k', (I_A⁻¹ * (M + S * k'))')),
+                -2,
+                1,
+            )
+            mul!(gradient, ∇S', vec(mul!(semml.varXvar_2, k', k)), -1, 1)
         end
     end
 
