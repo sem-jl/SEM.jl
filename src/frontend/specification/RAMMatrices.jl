@@ -113,6 +113,17 @@ function RAMMatrices(;
     return RAMMatrices(A, S, F, M, copy(params), vars)
 end
 
+# copy RAMMatrices replacing the parameters vector
+# (e.g. when reordering parameters or adding new parameters to the ensemble model)
+RAMMatrices(ram::RAMMatrices; params::AbstractVector{Symbol}) = RAMMatrices(;
+    A = materialize(ram.A, SEM.params(ram)),
+    S = materialize(ram.S, SEM.params(ram)),
+    F = copy(ram.F),
+    M = !isnothing(ram.M) ? materialize(ram.M, SEM.params(ram)) : nothing,
+    params,
+    vars = ram.vars,
+)
+
 ############################################################################################
 ### get RAMMatrices from parameter table
 ############################################################################################
