@@ -8,16 +8,16 @@ Maximum likelihood estimation.
 
 # Constructor
 
-    SemML(;observed, meanstructure = false, approximate_hessian = false, kwargs...)
+    SemML(; observed, imply, approximate_hessian = false, kwargs...)
 
 # Arguments
 - `observed::SemObserved`: the observed part of the model
-- `meanstructure::Bool`: does the model have a meanstructure?
+- `imply::SemImply`: the implied part of the model
 - `approximate_hessian::Bool`: if hessian-based optimization is used, should the hessian be swapped for an approximation
 
 # Examples
 ```julia
-my_ml = SemML(observed = my_observed)
+my_ml = SemML(observed = my_observed, imply = my_implied)
 ```
 
 # Interfaces
@@ -46,14 +46,14 @@ end
 
 function SemML(;
     observed::SemObserved,
-    specification::SemSpecification,
+    imply::SemImply,
     approximate_hessian::Bool = false,
     kwargs...,
 )
     he = approximate_hessian ? ApproxHessian() : ExactHessian()
     obsXobs = parent(obs_cov(observed))
-    nobs = nobserved_vars(specification)
-    nvar = nvars(specification)
+    nobs = nobserved_vars(observed)
+    nvar = nvars(imply)
 
     return SemML{typeof(he), typeof(obsXobs)}(
         he,

@@ -11,12 +11,10 @@ Subtype of `SemImply` that implements the RAM notation with symbolic precomputat
         gradient = true,
         hessian = false,
         approximate_hessian = false,
-        meanstructure = false,
         kwargs...)
 
 # Arguments
 - `specification`: either a `RAMMatrices` or `ParameterTable` object
-- `meanstructure::Bool`: does the model have a meanstructure?
 - `gradient::Bool`: is gradient-based optimization used
 - `hessian::Bool`: is hessian-based optimization used
 - `approximate_hessian::Bool`: for hessian based optimization: should the hessian be approximated
@@ -48,9 +46,6 @@ The computation of hessians is more involved, and uses the "chain rule for
 hessian matrices".
 Therefore, we desribe it at length in the mathematical appendix of the online documentation,
 and the relevant interfaces are omitted here.
-
-Additional interfaces
-- `has_meanstructure(::RAMSymbolic)` -> `Val{Bool}` does the model have a meanstructure?
 
 ## RAM notation
 The model implied covariance matrix is computed as
@@ -89,17 +84,15 @@ end
 ### Constructors
 ############################################################################################
 
-function RAMSymbolic(;
-    specification::SemSpecification,
-    loss_types = nothing,
-    vech = false,
-    gradient = true,
-    hessian = false,
-    meanstructure = false,
-    approximate_hessian = false,
+function RAMSymbolic(
+    spec::SemSpecification;
+    vech::Bool = false,
+    gradient::Bool = true,
+    hessian::Bool = false,
+    approximate_hessian::Bool = false,
     kwargs...,
 )
-    ram_matrices = convert(RAMMatrices, specification)
+    ram_matrices = convert(RAMMatrices, spec)
 
     n_par = nparams(ram_matrices)
     par = (Symbolics.@variables θ[1:n_par])[1]
@@ -109,14 +102,10 @@ function RAMSymbolic(;
     M = !isnothing(ram_matrices.M) ? materialize(Num, ram_matrices.M, par) : nothing
     F = ram_matrices.F
 
-    if !isnothing(loss_types) && any(T -> T <: SemWLS, loss_types)
-        vech = true
-    end
-
     I_A⁻¹ = neumann_series(A)
 
     # Σ
-    Σ_symbolic = eval_Σ_symbolic(S, I_A⁻¹, F; vech = vech)
+    Σ_symbolic = eval_Σ_symbolic(S, I_A⁻¹, F; vech)
     #print(Symbolics.build_function(Σ_symbolic)[2])
     Σ_function = Symbolics.build_function(Σ_symbolic, par, expression = Val{false})[2]
     Σ = zeros(size(Σ_symbolic))
@@ -155,7 +144,7 @@ function RAMSymbolic(;
     end
 
     # μ
-    if meanstructure
+    if !isnothing(ram_matrices.M)
         MS = HasMeanStruct
         μ_symbolic = eval_μ_symbolic(M, I_A⁻¹, F)
         μ_function = Symbolics.build_function(μ_symbolic, par, expression = Val{false})[2]
@@ -235,10 +224,10 @@ end
 ############################################################################################
 
 # expected covariations of observed vars
-function eval_Σ_symbolic(S, I_A⁻¹, F; vech = false)
+function eval_Σ_symbolic(S, I_A⁻¹, F; vech::Bool = false)
     Σ = F * I_A⁻¹ * S * permutedims(I_A⁻¹) * permutedims(F)
     Σ = Array(Σ)
-    vech && (Σ = Σ[tril(trues(size(F, 1), size(F, 1)))])
+    vech && (Σ = SEM.vech(Σ))
     # Σ = Symbolics.simplify.(Σ)
     Threads.@threads for i in eachindex(Σ)
         Σ[i] = Symbolics.simplify(Σ[i])
