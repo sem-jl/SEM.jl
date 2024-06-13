@@ -50,7 +50,7 @@ function minus2ll(observed::SemObservedMissing)
     # FIXME: this code is duplicate to objective(fiml, ...)
     F = sum(observed.patterns) do pat
         # implied covariance/mean
-        Σᵢ = Σ[pat.measured_mask, pat.measured_mask]
+        Σᵢ = Symmetric(Σ[pat.measured_mask, pat.measured_mask])
         Σᵢ_chol = cholesky!(Σᵢ)
         ld = logdet(Σᵢ_chol)
         Σᵢ⁻¹ = LinearAlgebra.inv!(Σᵢ_chol)

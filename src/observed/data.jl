@@ -26,10 +26,10 @@ For observed data without missings.
 ## Implementation
 Subtype of `SemObserved`
 """
-struct SemObservedData{D <: Union{Nothing, AbstractMatrix}, S <: Number} <: SemObserved
+struct SemObservedData{D <: Union{Nothing, AbstractMatrix}, C, S <: Number} <: SemObserved
     data::D
     observed_vars::Vector{Symbol}
-    obs_cov::Matrix{S}
+    obs_cov::C
     obs_mean::Vector{S}
     nsamples::Int
 end
@@ -45,7 +45,7 @@ function SemObservedData(;
         prepare_data(data, observed_vars, specification; observed_var_prefix)
     obs_mean, obs_cov = mean_and_cov(data, 1)
 
-    return SemObservedData(data, obs_vars, obs_cov, vec(obs_mean), size(data, 1))
+    return SemObservedData(data, obs_vars, Symmetric(obs_cov), vec(obs_mean), size(data, 1))
 end
 
 ############################################################################################

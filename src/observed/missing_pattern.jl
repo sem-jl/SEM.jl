@@ -8,7 +8,7 @@ struct SemObservedMissingPattern{T, S}
     data::Matrix{T}             # non-missing submatrix of data
 
     measured_mean::Vector{S}    # means of measured vars
-    measured_cov::Matrix{S}     # covariance of measured vars
+    measured_cov::Symmetric{S, Matrix{S}} # covariance of measured vars
 end
 
 function SemObservedMissingPattern(
@@ -34,7 +34,7 @@ function SemObservedMissingPattern(
         rows,
         pat_data,
         dropdims(pat_mean, dims = 1),
-        pat_cov,
+        Symmetric(pat_cov),
     )
 end
 

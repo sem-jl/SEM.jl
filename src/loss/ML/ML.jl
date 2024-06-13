@@ -47,8 +47,8 @@ function SemML(; observed::SemObserved, approximate_hessian::Bool = false, kwarg
     meandiff = isnothing(obsmean) ? nothing : copy(obsmean)
 
     return SemML{approximate_hessian ? ApproxHessian : ExactHessian}(
-        similar(obscov),
-        similar(obscov),
+        similar(parent(obscov)),
+        similar(parent(obscov)),
         meandiff,
     )
 end
