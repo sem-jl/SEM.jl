@@ -1,89 +1,70 @@
 """
-    χ²(sem_fit::SemFit)
+    χ²(fit::SemFit)
 
 Return the χ² value.
 """
-function χ² end
+χ²(fit::SemFit) = χ²(fit, fit.model)
 
 ############################################################################################
 # Single Models
 ############################################################################################
 
-# SemFit splices loss functions ------------------------------------------------------------
-χ²(sem_fit::SemFit{Mi, So, St, Mo, O} where {Mi, So, St, Mo <: AbstractSemSingle, O}) = χ²(
-    sem_fit,
-    sem_fit.model.observed,
-    sem_fit.model.imply,
-    sem_fit.model.loss.functions...,
-)
+χ²(fit::SemFit, model::AbstractSemSingle) =
+    sum(loss -> χ²(loss, fit, model), model.loss.functions)
 
 # RAM + SemML
-χ²(sem_fit::SemFit, observed, imp::Union{RAM, RAMSymbolic}, loss_ml::SemML) =
-    (nsamples(sem_fit) - 1) *
-    (sem_fit.minimum - logdet(observed.obs_cov) - nobserved_vars(observed))
+χ²(lossfun::SemML, fit::SemFit, model::AbstractSemSingle) =
+    (nsamples(fit) - 1) *
+    (fit.minimum - logdet(obs_cov(observed(model))) - nobserved_vars(observed(model)))
 
 # bollen, p. 115, only correct for GLS weight matrix
-χ²(sem_fit::SemFit, observed, imp::Union{RAM, RAMSymbolic}, loss_ml::SemWLS) =
-    (nsamples(sem_fit) - 1) * sem_fit.minimum
+χ²(lossfun::SemWLS, fit::SemFit, model::AbstractSemSingle) =
+    (nsamples(fit) - 1) * fit.minimum
 
 # FIML
-function χ²(sem_fit::SemFit, observed::SemObservedMissing, imp, loss_ml::SemFIML)
-    ll_H0 = minus2ll(sem_fit)
-    ll_H1 = minus2ll(observed)
-    chi2 = ll_H0 - ll_H1
-    return chi2
+function χ²(lossfun::SemFIML, fit::SemFit, model::AbstractSemSingle)
+    ll_H0 = minus2ll(fit)
+    ll_H1 = minus2ll(observed(model))
+    return ll_H0 - ll_H1
 end
 
 ############################################################################################
 # Collections
 ############################################################################################
 
-# SemFit splices loss functions ------------------------------------------------------------
-χ²(sem_fit::SemFit{Mi, So, St, Mo, O} where {Mi, So, St, Mo <: SemEnsemble, O}) =
-    χ²(sem_fit, sem_fit.model, sem_fit.model.sems[1].loss.functions[1])
+function χ²(fit::SemFit, models::SemEnsemble)
+    isempty(models.sems) && return 0.0
 
-function χ²(sem_fit::SemFit, model::SemEnsemble, lossfun::L) where {L <: SemWLS}
-    check_ensemble_length(model)
-    check_lossfun_types(model, L)
-    return (nsamples(model) - 1) * sem_fit.minimum
-end
-
-function χ²(sem_fit::SemFit, model::SemEnsemble, lossfun::L) where {L <: SemML}
-    check_ensemble_length(model)
-    check_lossfun_types(model, L)
-    F_G = sem_fit.minimum
-    F_G -= sum([
-        w * (logdet(m.observed.obs_cov) + nobserved_vars(m.observed)) for
-        (w, m) in zip(model.weights, model.sems)
-    ])
-    return (nsamples(model) - 1) * F_G
-end
-
-function χ²(sem_fit::SemFit, model::SemEnsemble, lossfun::L) where {L <: SemFIML}
-    check_ensemble_length(model)
-    check_lossfun_types(model, L)
-
-    ll_H0 = minus2ll(sem_fit)
-    ll_H1 = sum(minus2ll.(observed.(models(model))))
-    chi2 = ll_H0 - ll_H1
-
-    return chi2
-end
-
-function check_ensemble_length(model)
-    for sem in model.sems
+    lossfun = models.sems[1].loss.functions[1]
+    # check that all models use the same single loss function
+    L = typeof(lossfun)
+    for (i, sem) in enumerate(models.sems)
         if length(sem.loss.functions) > 1
-            @error "A model for one of the groups contains multiple loss functions."
+            @error "Model for group #$i has $(length(sem.loss.functions)) loss functions. Only the single one is supported"
+        end
+        cur_lossfun = sem.loss.functions[1]
+        if !isa(cur_lossfun, L)
+            @error "Loss function for group #$i model is $(typeof(cur_lossfun)), expected $L. Heterogeneous loss functions are not supported"
         end
     end
+
+    return χ²(lossfun, fit, models)
 end
 
-function check_lossfun_types(model, type)
-    for sem in model.sems
-        for lossfun in sem.loss.functions
-            if !isa(lossfun, type)
-                @error "Your model(s) contain multiple lossfunctions with differing types."
-            end
-        end
+function χ²(lossfun::SemWLS, fit::SemFit, models::SemEnsemble)
+    return (nsamples(models) - 1) * fit.minimum
+end
+
+function χ²(lossfun::SemML, fit::SemFit, models::SemEnsemble)
+    G = sum(zip(models.weights, models.sems)) do (w, model)
+        data = observed(model)
+        w * (logdet(obs_cov(data)) + nobserved_vars(data))
     end
+    return (nsamples(models) - 1) * (fit.minimum - G)
+end
+
+function χ²(lossfun::SemFIML, fit::SemFit, models::SemEnsemble)
+    ll_H0 = minus2ll(fit)
+    ll_H1 = sum(minus2ll ∘ observed, models.sems)
+    return ll_H0 - ll_H1
 end
