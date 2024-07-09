@@ -49,7 +49,8 @@ function start_simple(
     start_covariances_observed = 0.0,
     start_covariances_latent = 0.0,
     start_covariances_obs_lat = 0.0,
-    start_means = 0.0,
+    start_mean_latent = 0.0,
+    start_mean_observed = 0.0,
     kwargs...,
 )
     A, S, M = ram_matrices.A, ram_matrices.S, ram_matrices.M
@@ -98,7 +99,7 @@ function start_simple(
             if length(Mi_inds) != 0
                 iszero(par) ||
                     @warn "param[$i]=$(params(ram_matrices, i)) is already set to $par"
-                par = start_means
+                par = ifelse(Mi_inds[1] ∈ obs_inds, start_mean_observed, start_mean_latent)
             end
         end
 
