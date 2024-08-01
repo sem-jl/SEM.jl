@@ -38,6 +38,7 @@ include("frontend/specification/RAMMatrices.jl")
 include("frontend/specification/EnsembleParameterTable.jl")
 include("frontend/specification/StenoGraphs.jl")
 include("frontend/fit/summary.jl")
+include("frontend/predict.jl")
 # pretty printing
 include("frontend/pretty_printing.jl")
 # observed
