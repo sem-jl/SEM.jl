@@ -1,6 +1,13 @@
 # API methods supported by multiple SEM.jl types
 
 """
+    params(semobj) -> Vector{Symbol}
+
+Return the vector of SEM model parameter identifiers.
+"""
+function params end
+
+"""
     nparams(semobj)
 
 Return the number of parameters in a SEM model associated with `semobj`.
