@@ -93,8 +93,7 @@ function test_observed(
                 @test @inferred(obs_mean(observed)) == dat_mean
             end
         else
-            # FIXME @inferred is broken for EM cov/mean since it may return nothing if EM was not run
-            @test @inferred(obs_mean(observed)) isa AbstractVector{Float64} broken = true # EM-based means
+            @test @inferred(obs_mean(observed)) isa AbstractVector{Float64} # EM-based means
         end
     else
         @test @inferred(obs_mean(observed)) === nothing skip = true
