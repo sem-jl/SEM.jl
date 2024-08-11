@@ -52,51 +52,57 @@ function start_simple(
     start_means = 0.0,
     kwargs...,
 )
-    A, S, F_ind, M, n_par = ram_matrices.A,
-    ram_matrices.S,
-    observed_var_indices(ram_matrices),
-    ram_matrices.M,
-    nparams(ram_matrices)
+    A, S, M = ram_matrices.A, ram_matrices.S, ram_matrices.M
+    obs_inds = Set(observed_var_indices(ram_matrices))
+    C_indices = CartesianIndices(size(A))
 
-    start_val = zeros(n_par)
-    n_obs = nobserved_vars(ram_matrices)
-    n_var = nvars(ram_matrices)
+    start_vals = Vector{Float64}(undef, nparams(ram_matrices))
+    for i in eachindex(start_vals)
+        par = 0.0
 
-    C_indices = CartesianIndices((n_var, n_var))
-
-    for i in 1:n_par
         Si_ind = param_occurences(S, i)
-        Ai_ind = param_occurences(A, i)
         if length(Si_ind) != 0
             # use the first occurence of the parameter to determine starting value
             c_ind = C_indices[Si_ind[1]]
             if c_ind[1] == c_ind[2]
-                if c_ind[1] ∈ F_ind
-                    start_val[i] = start_variances_observed
-                else
-                    start_val[i] = start_variances_latent
-                end
+                par = ifelse(
+                    c_ind[1] ∈ obs_inds,
+                    start_variances_observed,
+                    start_variances_latent,
+                )
             else
-                o1 = c_ind[1] ∈ F_ind
-                o2 = c_ind[2] ∈ F_ind
-                if o1 & o2
-                    start_val[i] = start_covariances_observed
-                elseif !o1 & !o2
-                    start_val[i] = start_covariances_latent
-                else
-                    start_val[i] = start_covariances_obs_lat
-                end
+                o1 = c_ind[1] ∈ obs_inds
+                o2 = c_ind[2] ∈ obs_inds
+                par = ifelse(
+                    o1 && o2,
+                    start_covariances_observed,
+                    ifelse(!o1 && !o2, start_covariances_latent, start_covariances_obs_lat),
+                )
             end
-        elseif length(Ai_ind) != 0
-            c_ind = C_indices[Ai_ind[1]]
-            if (c_ind[1] ∈ F_ind) & !(c_ind[2] ∈ F_ind)
-                start_val[i] = start_loadings
-            else
-                start_val[i] = start_regressions
-            end
-        elseif !isnothing(M) && (length(param_occurences(M, i)) != 0)
-            start_val[i] = start_means
         end
+
+        Ai_ind = param_occurences(A, i)
+        if length(Ai_ind) != 0
+            iszero(par) ||
+                @warn "param[$i]=$(params(ram_matrices, i)) is already set to $par"
+            c_ind = C_indices[Ai_ind[1]]
+            par = ifelse(
+                (c_ind[1] ∈ obs_inds) && !(c_ind[2] ∈ obs_inds),
+                start_loadings,
+                start_regressions,
+            )
+        end
+
+        if !isnothing(M)
+            Mi_inds = param_occurences(M, i)
+            if length(Mi_inds) != 0
+                iszero(par) ||
+                    @warn "param[$i]=$(params(ram_matrices, i)) is already set to $par"
+                par = start_means
+            end
+        end
+
+        start_vals[i] = par
     end
-    return start_val
+    return start_vals
 end
