@@ -22,13 +22,16 @@ vars(ram::RAMMatrices) = ram.vars
 isobserved_var(ram::RAMMatrices, i::Integer) = ram.F.colptr[i+1] > ram.F.colptr[i]
 islatent_var(ram::RAMMatrices, i::Integer) = ram.F.colptr[i+1] == ram.F.colptr[i]
 
-# indices of observed variables in the order as they appear in ram.F rows
-function observed_var_indices(ram::RAMMatrices)
+# indices of observed variables, for order=:rows (default), the order is as they appear in ram.F rows
+# if order=:columns, the order is as they appear in the comined variables list (ram.F columns)
+function observed_var_indices(ram::RAMMatrices; order::Symbol = :rows)
     obs_inds = Vector{Int}(undef, nobserved_vars(ram))
+    nobs = 0
     @inbounds for i in 1:nvars(ram)
         colptr = ram.F.colptr[i]
         if ram.F.colptr[i+1] > colptr # is observed
-            obs_inds[ram.F.rowval[colptr]] = i
+            nobs += 1
+            obs_inds[order == :rows ? ram.F.rowval[colptr] : nobs] = i
         end
     end
     return obs_inds
