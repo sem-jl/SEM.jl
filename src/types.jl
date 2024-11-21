@@ -10,6 +10,32 @@ abstract type AbstractSemSingle{O, I, L, D} <: AbstractSem end
 "Supertype for all collections of multiple SEMs"
 abstract type AbstractSemCollection <: AbstractSem end
 
+"Meanstructure trait for `SemImply` subtypes"
+abstract type MeanStruct end
+"Indicates that `SemImply` subtype supports mean structure"
+struct HasMeanStruct <: MeanStruct end
+"Indicates that `SemImply` subtype does not support mean structure"
+struct NoMeanStruct <: MeanStruct end
+
+# default implementation
+MeanStruct(::Type{T}) where {T} =
+    hasfield(T, :meanstruct) ? fieldtype(T, :meanstruct) :
+    error("Objects of type $T do not support MeanStruct trait")
+
+MeanStruct(semobj) = MeanStruct(typeof(semobj))
+
+"Hessian Evaluation trait for `SemImply` and `SemLossFunction` subtypes"
+abstract type HessianEval end
+struct ApproxHessian <: HessianEval end
+struct ExactHessian <: HessianEval end
+
+# default implementation
+HessianEval(::Type{T}) where {T} =
+    hasfield(T, :hessianeval) ? fieldtype(T, :hessianeval) :
+    error("Objects of type $T do not support HessianEval trait")
+
+HessianEval(semobj) = HessianEval(typeof(semobj))
+
 "Supertype for all loss functions of SEMs. If you want to implement a custom loss function, it should be a subtype of `SemLossFunction`."
 abstract type SemLossFunction end
 
@@ -137,48 +163,54 @@ end
 # ensemble models
 ############################################################################################
 """
-    SemEnsemble(models..., optimizer = SemOptimizerOptim, weights = nothing, kwargs...)
+    (1) SemEnsemble(models..., optimizer = SemOptimizerOptim, weights = nothing, kwargs...)
 
-Constructor for ensemble models.
+    (2) SemEnsemble(;specification, data, groups, column = :group, optimizer = SemOptimizerOptim, kwargs...)
+
+Constructor for ensemble models. (2) can be used to conveniently specify multigroup models.
 
 # Arguments
 - `models...`: `AbstractSem`s.
 - `optimizer`: object of subtype `SemOptimizer` or a constructor.
 - `weights::Vector`:  Weights for each model. Defaults to the number of observed data points.
+- `specification::EnsembleParameterTable`: Model specification.
+- `data::DataFrame`: Observed data. Must contain a `column` of type `Vector{Symbol}` that contains the group.
+- `groups::Vector{Symbol}`: Group names.
+- `column::Symbol`: Name of the column in `data` that contains the group.
 
-All additional kwargs are passed down to the constructor for the optimizer field.
+All additional kwargs are passed down to the model parts.
 
 Returns a SemEnsemble with fields
 - `n::Int`: Number of models.
 - `sems::Tuple`: `AbstractSem`s.
 - `weights::Vector`: Weights for each model.
 - `optimizer::SemOptimizer`: Connects the model to the optimizer. See also [`SemOptimizer`](@ref).
-- `identifier::Dict`: Stores parameter labels and their position.
+- `params::Vector`: Stores parameter labels and their position.
 """
 struct SemEnsemble{N, T <: Tuple, V <: AbstractVector, D, I} <: AbstractSemCollection
     n::N
     sems::T
     weights::V
     optimizer::D
-    identifier::I
+    params::I
 end
 
+# constructor from multiple models
 function SemEnsemble(models...; optimizer = SemOptimizerOptim, weights = nothing, kwargs...)
     n = length(models)
-    npar = n_par(models[1])
 
     # default weights
 
     if isnothing(weights)
-        nobs_total = sum(n_obs, models)
-        weights = [n_obs(model) / nobs_total for model in models]
+        nsamples_total = sum(nsamples, models)
+        weights = [nsamples(model) / nsamples_total for model in models]
     end
 
-    # check identifier equality
-    id = identifier(models[1])
+    # check parameters equality
+    params = SEM.params(models[1])
     for model in models
-        if id != identifier(model)
-            throw(ErrorException("The identifier of your models do not match. \n
+        if params != SEM.params(model)
+            throw(ErrorException("The parameters of your models do not match. \n
             Maybe you tried to specify models of an ensemble via ParameterTables. \n
             In that case, you may use RAMMatrices instead."))
         end
@@ -189,8 +221,32 @@ function SemEnsemble(models...; optimizer = SemOptimizerOptim, weights = nothing
         optimizer = optimizer(; kwargs...)
     end
 
-    return SemEnsemble(n, models, weights, optimizer, id)
+    return SemEnsemble(n, models, weights, optimizer, params)
 end
+
+# constructor from EnsembleParameterTable and data set
+function SemEnsemble(;specification, data, groups, column = :group, optimizer = SemOptimizerOptim, kwargs...)
+    if specification isa EnsembleParameterTable
+        specification = convert(Dict{Symbol, RAMMatrices}, specification)
+    end
+    models = []
+    for group in groups
+        ram_matrices = specification[group]
+        data_group = select(filter(r -> r[column] == group, data), Not(column))
+        if iszero(nrow(data_group))
+            error("Your data does not contain any observations from group `$(group)`.")
+        end
+        model = Sem(;
+            specification = ram_matrices,
+            data = data_group,
+            kwargs...
+        )
+        push!(models, model)
+    end
+    return SemEnsemble(models...; optimizer = optimizer, weights = nothing, kwargs...)
+end
+
+params(ensemble::SemEnsemble) = ensemble.params
 
 """
     n_models(ensemble::SemEnsemble) -> Integer
@@ -217,33 +273,9 @@ Returns the optimizer part of an ensemble model.
 """
 optimizer(ensemble::SemEnsemble) = ensemble.optimizer
 
-############################################################################################
-# additional methods
-############################################################################################
 """
-    observed(model::AbstractSemSingle) -> SemObserved
+Base type for all SEM specifications.
+"""
+abstract type SemSpecification end
 
-Returns the observed part of a model.
-"""
-observed(model::AbstractSemSingle) = model.observed
-
-"""
-    imply(model::AbstractSemSingle) -> SemImply
-
-Returns the imply part of a model.
-"""
-imply(model::AbstractSemSingle) = model.imply
-
-"""
-    loss(model::AbstractSemSingle) -> SemLoss
-
-Returns the loss part of a model.
-"""
-loss(model::AbstractSemSingle) = model.loss
-
-"""
-    optimizer(model::AbstractSemSingle) -> SemOptimizer
-
-Returns the optimizer part of a model.
-"""
-optimizer(model::AbstractSemSingle) = model.optimizer
+abstract type AbstractParameterTable <: SemSpecification end

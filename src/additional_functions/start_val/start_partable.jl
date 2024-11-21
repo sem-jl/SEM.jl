@@ -1,6 +1,6 @@
 """
     start_parameter_table(model; parameter_table)
-    
+
 Return a vector of starting values taken from `parameter_table`.
 """
 function start_parameter_table end
@@ -28,10 +28,10 @@ function start_parameter_table(
 )
     start_val = zeros(0)
 
-    for identifier_ram in ram_matrices.parameters
+    for param in ram_matrices.params
         found = false
-        for (i, identifier_table) in enumerate(parameter_table.identifier)
-            if identifier_ram == identifier_table
+        for (i, param_table) in enumerate(parameter_table.params)
+            if param == param_table
                 push!(start_val, parameter_table.start[i])
                 found = true
                 break

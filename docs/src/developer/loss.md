@@ -60,11 +60,12 @@ graph = @StenoGraph begin
 end
 
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars,
-    observed_vars = observed_vars,
-    graph = graph)
+    observed_vars = observed_vars
+)
 
-parameter_indices  = get_identifier_indices([:a, :b, :c], partable)
+parameter_indices  = param_indices([:a, :b, :c], partable)
 myridge = Ridge(0.01, parameter_indices)
 
 model = SemFiniteDiff(
@@ -269,4 +270,4 @@ model_ml = SemFiniteDiff(
 model_fit = sem_fit(model_ml)
 ```
 
-If you want to differentiate your own loss functions via automatic differentiation, check out the [AutoDiffSEM](https://github.com/StructuralEquationModels/AutoDiffSEM) package (spoiler allert: it's really easy).
+If you want to differentiate your own loss functions via automatic differentiation, check out the [AutoDiffSEM](https://github.com/StructuralEquationModels/AutoDiffSEM) package.

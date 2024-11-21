@@ -31,9 +31,9 @@ graph = @StenoGraph begin
 end
 
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 
 data = example_data("political_democracy")
 
@@ -87,8 +87,8 @@ We can also update the `ParameterTable` object with other information via [`upda
 se_bs = se_bootstrap(model_fit; n_boot = 20)
 se_he = se_hessian(model_fit)
 
-update_partable!(partable, model_fit, se_he, :se_hessian)
-update_partable!(partable, model_fit, se_bs, :se_bootstrap)
+update_partable!(partable, :se_hessian, params(model_fit), se_he)
+update_partable!(partable, :se_bootstrap, params(model_fit), se_bs)
 
 sem_summary(partable)
 ```
@@ -130,7 +130,7 @@ df
 minus2ll
 n_man
 n_obs
-n_par
+nparams
 p_value
 RMSEA
 ```

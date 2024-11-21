@@ -1,5 +1,5 @@
 fit_measures(sem_fit) =
-    fit_measures(sem_fit, n_par, df, AIC, BIC, RMSEA, χ², p_value, minus2ll)
+    fit_measures(sem_fit, nparams, df, AIC, BIC, RMSEA, χ², p_value, minus2ll)
 
 function fit_measures(sem_fit, args...)
     measures = Dict{Symbol, Union{Float64, Missing}}()

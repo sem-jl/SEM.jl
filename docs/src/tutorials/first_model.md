@@ -83,9 +83,9 @@ We then use this graph to define a `ParameterTable` object
 
 ```@example high_level; ansicolor = true
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 ```
 
 load the example data

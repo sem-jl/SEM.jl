@@ -30,10 +30,10 @@ To make stored computations available to loss functions, simply write a function
 
 Additionally, you can specify methods for `gradient` and `hessian` as well as the combinations described in [Custom loss functions](@ref).
 
-The last thing nedded to make it work is a method for `n_par` that takes your imply type and returns the number of parameters of the model:
+The last thing nedded to make it work is a method for `nparams` that takes your imply type and returns the number of parameters of the model:
 
 ```julia
-n_par(imply::MyImply) = ...
+nparams(imply::MyImply) = ...
 ```
 
 Just as described in [Custom loss functions](@ref), you may define a constructor. Typically, this will depend on the `specification = ...` argument that can be a `ParameterTable` or a `RAMMatrices` object.

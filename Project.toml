@@ -22,10 +22,11 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StenoGraphs = "78862bba-adae-4a83-bb4d-33c106177f81"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+SymbolicUtils = "d1185830-fcd6-423d-90d6-eec64667417b"
 
 [compat]
 julia = "1.9, 1.10"
-StenoGraphs = "0.2"
+StenoGraphs = "0.2, 0.3"
 DataFrames = "1"
 Distributions = "0.25"
 FiniteDiff = "2"
@@ -36,6 +37,7 @@ Optim = "1"
 PrettyTables = "2"
 StatsBase = "0.33, 0.34"
 Symbolics = "4, 5"
+SymbolicUtils = "1.4 - 1.5"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

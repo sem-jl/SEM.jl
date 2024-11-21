@@ -6,20 +6,17 @@ using StructuralEquationModels
 
 As an example, we will fit the model from [the `lavaan` tutorial](https://lavaan.ugent.be/tutorial/groups.html) with loadings constrained to equality across groups.
 
-We first load the example data and split it between groups:
+We first load the example data. 
+We have to make sure that the column indicating the group (here called `school`) is a vector of `Symbol`s, not strings - so we convert it.
 
 ```@setup mg
 dat = example_data("holzinger_swineford")
-
-dat_g1 = dat[dat.school .== "Pasteur", :]
-dat_g2 = dat[dat.school .== "Grant-White", :]
+dat.school = ifelse.(dat.school .== "Pasteur", :Pasteur, :Grant_White)
 ```
 
 ```julia
 dat = example_data("holzinger_swineford")
-
-dat_g1 = dat[dat.school .== "Pasteur", :]
-dat_g2 = dat[dat.school .== "Grant-White", :]
+dat.school = ifelse.(dat.school .== "Pasteur", :Pasteur, :Grant_White)
 ```
 
 We then specify our model via the graph interface:
@@ -61,39 +58,25 @@ You can then use the resulting graph to specify an `EnsembleParameterTable`
 ```@example mg; ansicolor = true
 groups = [:Pasteur, :Grant_White]
 
-partable = EnsembleParameterTable(;
-    graph = graph, 
+partable = EnsembleParameterTable(
+    graph, 
     observed_vars = observed_vars,
     latent_vars = latent_vars,
     groups = groups)
 ```
 
-The parameter table can be used to create a `Dict` of RAMMatrices with keys equal to the group names and parameter tables as values:
+The parameter table can be used to create a `SemEnsemble` model:
 
 ```@example mg; ansicolor = true
-specification = RAMMatrices(partable)
+model_ml_multigroup = SemEnsemble(
+    specification = partable,
+    data = dat,
+    column = :school,
+    groups = groups)
 ```
-
-That is, you can asses the group-specific `RAMMatrices` as `specification[:group_name]`.
 
 !!! note "A different way to specify"
-    Instead of choosing the workflow "Graph -> EnsembleParameterTable -> RAMMatrices", you may also directly specify RAMMatrices for each group (for an example see [this test](https://github.com/StructuralEquationModels/StructuralEquationModels.jl/blob/main/test/examples/multigroup/multigroup.jl)).
-
-The next step is to construct the model:
-
-```@example mg; ansicolor = true
-model_g1 = Sem(
-    specification = specification[:Pasteur],
-    data = dat_g1
-)
-
-model_g2 = Sem(
-    specification = specification[:Grant_White],
-    data = dat_g2
-)
-
-model_ml_multigroup = SemEnsemble(model_g1, model_g2)
-```
+    Instead of choosing the workflow "Graph -> EnsembleParameterTable -> model", you may also directly specify RAMMatrices for each group (for an example see [this test](https://github.com/StructuralEquationModels/StructuralEquationModels.jl/blob/main/test/examples/multigroup/multigroup.jl)).
 
 We now fit the model and inspect the parameter estimates:
 

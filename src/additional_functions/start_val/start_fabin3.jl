@@ -31,18 +31,18 @@ function start_fabin3(observed::SemObservedMissing, imply, optimizer, args...; k
 end
 
 function start_fabin3(ram_matrices::RAMMatrices, Σ, μ)
-    A_ind, S_ind, F_ind, M_ind, parameters = ram_matrices.A_ind,
+    A_ind, S_ind, F_ind, M_ind, n_par = ram_matrices.A_ind,
     ram_matrices.S_ind,
     ram_matrices.F_ind,
     ram_matrices.M_ind,
-    ram_matrices.parameters
+    nparams(ram_matrices)
 
-    n_par = length(parameters)
     start_val = zeros(n_par)
-    n_var, n_nod = ram_matrices.size_F
-    n_latent = n_nod - n_var
+    n_obs = nobserved_vars(ram_matrices)
+    n_var = nvars(ram_matrices)
+    n_latent = nlatent_vars(ram_matrices)
 
-    C_indices = CartesianIndices((n_nod, n_nod))
+    C_indices = CartesianIndices((n_var, n_var))
 
     # check in which matrix each parameter appears
 
@@ -50,7 +50,7 @@ function start_fabin3(ram_matrices::RAMMatrices, Σ, μ)
 
     #=     in_S = length.(S_ind) .!= 0
         in_A = length.(A_ind) .!= 0
-        A_ind_c = [linear2cartesian(ind, (n_nod, n_nod)) for ind in A_ind]
+        A_ind_c = [linear2cartesian(ind, (n_var, n_var)) for ind in A_ind]
         in_Λ = [any(ind[2] .∈ F_ind) for ind in A_ind_c]
 
         if !isnothing(M)
@@ -77,7 +77,7 @@ function start_fabin3(ram_matrices::RAMMatrices, Σ, μ)
 
     # set loadings
     constants = ram_matrices.constants
-    A_ind_c = [linear2cartesian(ind, (n_nod, n_nod)) for ind in A_ind]
+    A_ind_c = [linear2cartesian(ind, (n_var, n_var)) for ind in A_ind]
     # ind_Λ = findall([is_in_Λ(ind_vec, F_ind) for ind_vec in A_ind_c])
 
     function calculate_lambda(
@@ -99,7 +99,7 @@ function start_fabin3(ram_matrices::RAMMatrices, Σ, μ)
         end
     end
 
-    for i in setdiff(1:n_nod, F_ind)
+    for i in setdiff(1:n_var, F_ind)
         reference = Int64[]
         indicators = Int64[]
         indicator2parampos = Dict{Int, Int}()

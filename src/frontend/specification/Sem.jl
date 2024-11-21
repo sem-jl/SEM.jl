@@ -20,6 +20,52 @@ function Sem(;
     return sem
 end
 
+nvars(sem::AbstractSemSingle) = nvars(sem.imply)
+nobserved_vars(sem::AbstractSemSingle) = nobserved_vars(sem.imply)
+nlatent_vars(sem::AbstractSemSingle) = nlatent_vars(sem.imply)
+
+vars(sem::AbstractSemSingle) = vars(sem.imply)
+observed_vars(sem::AbstractSemSingle) = observed_vars(sem.imply)
+latent_vars(sem::AbstractSemSingle) = latent_vars(sem.imply)
+
+nsamples(sem::AbstractSemSingle) = nsamples(sem.observed)
+
+params(model::AbstractSem) = params(model.imply)
+
+# sum of samples in all sub-models
+nsamples(ensemble::SemEnsemble) = sum(nsamples, ensemble.sems)
+
+############################################################################################
+# additional methods
+############################################################################################
+"""
+    observed(model::AbstractSemSingle) -> SemObserved
+
+Returns the observed part of a model.
+"""
+observed(model::AbstractSemSingle) = model.observed
+
+"""
+    imply(model::AbstractSemSingle) -> SemImply
+
+Returns the imply part of a model.
+"""
+imply(model::AbstractSemSingle) = model.imply
+
+"""
+    loss(model::AbstractSemSingle) -> SemLoss
+
+Returns the loss part of a model.
+"""
+loss(model::AbstractSemSingle) = model.loss
+
+"""
+    optimizer(model::AbstractSemSingle) -> SemOptimizer
+
+Returns the optimizer part of a model.
+"""
+optimizer(model::AbstractSemSingle) = model.optimizer
+
 function SemFiniteDiff(;
     observed::O = SemObservedData,
     imply::I = RAM,
@@ -73,7 +119,7 @@ function get_fields!(kwargs, observed, imply, loss, optimizer)
     end
 
     kwargs[:imply] = imply
-    kwargs[:n_par] = n_par(imply)
+    kwargs[:nparams] = nparams(imply)
 
     # loss
     loss = get_SemLoss(loss; kwargs...)

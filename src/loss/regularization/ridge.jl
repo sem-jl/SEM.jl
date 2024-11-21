@@ -8,18 +8,18 @@ Ridge regularization.
 
 # Constructor
 
-    SemRidge(;α_ridge, which_ridge, n_par, parameter_type = Float64, imply = nothing, kwargs...)
+    SemRidge(;α_ridge, which_ridge, nparams, parameter_type = Float64, imply = nothing, kwargs...)
 
 # Arguments
 - `α_ridge`: hyperparameter for penalty term
 - `which_ridge::Vector`: Vector of parameter labels (Symbols) or indices that indicate which parameters should be regularized.
-- `n_par::Int`: number of parameters of the model
+- `nparams::Int`: number of parameters of the model
 - `imply::SemImply`: imply part of the model
 - `parameter_type`: type of the parameters
 
 # Examples
 ```julia
-my_ridge = SemRidge(;α_ridge = 0.02, which_ridge = [:λ₁, :λ₂, :ω₂₃], n_par = 30, imply = my_imply)
+my_ridge = SemRidge(;α_ridge = 0.02, which_ridge = [:λ₁, :λ₂, :ω₂₃], nparams = 30, imply = my_imply)
 ```
 
 # Interfaces
@@ -30,6 +30,7 @@ Analytic gradients and hessians are available.
 Subtype of `SemLossFunction`.
 """
 struct SemRidge{P, W1, W2, GT, HT} <: SemLossFunction
+    hessianeval::ExactHessian
     α::P
     which::W1
     which_H::W2
@@ -45,7 +46,7 @@ end
 function SemRidge(;
     α_ridge,
     which_ridge,
-    n_par,
+    nparams,
     parameter_type = Float64,
     imply = nothing,
     kwargs...,
@@ -58,17 +59,18 @@ function SemRidge(;
                 ),
             )
         else
-            which_ridge = get_identifier_indices(which_ridge, imply)
+            par2ind = Dict(par => ind for (ind, par) in enumerate(params(imply)))
+            which_ridge = getindex.(Ref(par2ind), which_ridge)
         end
     end
-    which = [CartesianIndex(x) for x in which_ridge]
     which_H = [CartesianIndex(x, x) for x in which_ridge]
     return SemRidge(
+        ExactHessian(),
         α_ridge,
-        which,
+        which_ridge,
         which_H,
-        zeros(parameter_type, n_par),
-        zeros(parameter_type, n_par, n_par),
+        zeros(parameter_type, nparams),
+        zeros(parameter_type, nparams, nparams),
     )
 end
 
@@ -76,15 +78,16 @@ end
 ### methods
 ############################################################################################
 
-objective!(ridge::SemRidge, par, model) = @views ridge.α * sum(x -> x^2, par[ridge.which])
+objective(ridge::SemRidge, model::AbstractSem, par) =
+    @views ridge.α * sum(abs2, par[ridge.which])
 
-function gradient!(ridge::SemRidge, par, model)
-    @views ridge.gradient[ridge.which] .= 2 * ridge.α * par[ridge.which]
+function gradient(ridge::SemRidge, model::AbstractSem, par)
+    @views ridge.gradient[ridge.which] .= (2 * ridge.α) * par[ridge.which]
     return ridge.gradient
 end
 
-function hessian!(ridge::SemRidge, par, model)
-    @views @. ridge.hessian[ridge.which_H] += ridge.α * 2.0
+function hessian(ridge::SemRidge, model::AbstractSem, par)
+    @views @. ridge.hessian[ridge.which_H] .= 2 * ridge.α
     return ridge.hessian
 end
 

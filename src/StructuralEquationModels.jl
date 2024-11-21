@@ -16,7 +16,6 @@ using LinearAlgebra,
     DelimitedFiles,
     DataFrames
 
-import DataFrames: DataFrame
 export StenoGraphs, @StenoGraph, meld
 
 const SEM = StructuralEquationModels
@@ -24,18 +23,24 @@ const SEM = StructuralEquationModels
 # type hierarchy
 include("types.jl")
 include("objective_gradient_hessian.jl")
+
+# helper objects and functions
+include("additional_functions/commutation_matrix.jl")
+
 # fitted objects
 include("frontend/fit/SemFit.jl")
 # specification of models
+include("frontend/common.jl")
+include("frontend/specification/checks.jl")
 include("frontend/specification/ParameterTable.jl")
-include("frontend/specification/EnsembleParameterTable.jl")
 include("frontend/specification/RAMMatrices.jl")
+include("frontend/specification/EnsembleParameterTable.jl")
 include("frontend/specification/StenoGraphs.jl")
 include("frontend/fit/summary.jl")
 # pretty printing
 include("frontend/pretty_printing.jl")
 # observed
-include("observed/get_colnames.jl")
+include("observed/abstract.jl")
 include("observed/covariance.jl")
 include("observed/data.jl")
 include("observed/missing.jl")
@@ -44,6 +49,7 @@ include("observed/EM.jl")
 include("frontend/specification/Sem.jl")
 include("frontend/specification/documentation.jl")
 # imply
+include("imply/abstract.jl")
 include("imply/RAM/symbolic.jl")
 include("imply/RAM/generic.jl")
 include("imply/empty.jl")
@@ -70,19 +76,14 @@ include("additional_functions/start_val/start_partable.jl")
 include("additional_functions/start_val/start_simple.jl")
 include("additional_functions/artifacts.jl")
 include("additional_functions/simulation.jl")
-# identifier
-include("additional_functions/identifier.jl")
 # fit measures
 include("frontend/fit/fitmeasures/AIC.jl")
 include("frontend/fit/fitmeasures/BIC.jl")
 include("frontend/fit/fitmeasures/chi2.jl")
 include("frontend/fit/fitmeasures/df.jl")
 include("frontend/fit/fitmeasures/minus2ll.jl")
-include("frontend/fit/fitmeasures/n_par.jl")
-include("frontend/fit/fitmeasures/n_obs.jl")
 include("frontend/fit/fitmeasures/p.jl")
 include("frontend/fit/fitmeasures/RMSEA.jl")
-include("frontend/fit/fitmeasures/n_man.jl")
 include("frontend/fit/fitmeasures/fit_measures.jl")
 # standard errors
 include("frontend/fit/standard_errors/hessian.jl")
@@ -94,6 +95,12 @@ export AbstractSem,
     Sem,
     SemFiniteDiff,
     SemEnsemble,
+    MeanStruct,
+    NoMeanStruct,
+    HasMeanStruct,
+    HessianEval,
+    ExactHessian,
+    ApproxHessian,
     SemImply,
     RAMSymbolic,
     RAM,
@@ -125,6 +132,10 @@ export AbstractSem,
     SemObservedCovariance,
     SemObservedMissing,
     observed,
+    obs_cov,
+    obs_mean,
+    nsamples,
+    samples,
     sem_fit,
     SemFit,
     minimum,
@@ -137,6 +148,8 @@ export AbstractSem,
     objective_hessian!,
     gradient_hessian!,
     objective_gradient_hessian!,
+    SemSpecification,
+    RAMMatrices,
     ParameterTable,
     EnsembleParameterTable,
     update_partable!,
@@ -149,9 +162,17 @@ export AbstractSem,
     start,
     Label,
     label,
-    get_identifier_indices,
-    RAMMatrices,
-    identifier,
+    nvars,
+    vars,
+    nlatent_vars,
+    latent_vars,
+    nobserved_vars,
+    observed_vars,
+    sort_vars!,
+    sort_vars,
+    params,
+    nparams,
+    param_indices,
     fit_measures,
     AIC,
     BIC,
@@ -159,11 +180,8 @@ export AbstractSem,
     df,
     fit_measures,
     minus2ll,
-    n_par,
-    n_obs,
     p_value,
     RMSEA,
-    n_man,
     EmMVNModel,
     se_hessian,
     se_bootstrap,

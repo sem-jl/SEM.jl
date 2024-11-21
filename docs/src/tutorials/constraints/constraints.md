@@ -16,13 +16,13 @@ graph = @StenoGraph begin
 
     # loadings
     ind60 → fixed(1)*x1 + x2 + x3
-    dem60 → fixed(1)*y1 + y2 + y3 + y4
+    dem60 → fixed(1)*y1 + label(:λ₂)*y2 + label(:λ₃)*y3 + y4
     dem65 → fixed(1)*y5 + y6 + y7 + y8
 
     # latent regressions
     ind60 → dem60
     dem60 → dem65
-    ind60 → dem65
+    ind60 → label(:λₗ)*dem65
 
     # variances
     _(observed_vars) ↔ _(observed_vars)
@@ -31,15 +31,15 @@ graph = @StenoGraph begin
     # covariances
     y1 ↔ y5
     y2 ↔ y4 + y6
-    y3 ↔ y7
-    y8 ↔ y4 + y6
+    y3 ↔ label(:y3y7)*y7
+    y8 ↔ label(:y8y4)*y4 + y6
 
 end
 
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 
 data = example_data("political_democracy")
 
@@ -64,17 +64,19 @@ Let's introduce some constraints:
 
 (Of course those constaints only serve an illustratory purpose.)
 
-We first need to get the indices of the respective parameters that are invoved in the constraints. We can look up their labels in the output above, and retrieve their indices as
+We first need to get the indices of the respective parameters that are invoved in the constraints. 
+We can look up their labels in the output above, and retrieve their indices as
 
 ```@example constraints
-parameter_indices = get_identifier_indices([:θ_29, :θ_30, :θ_3, :θ_4, :θ_11], model)
+parind = param_indices(model)
+parind[:y3y7] # 29
 ```
 
-The bound constraint is easy to specify: Just give a vector of upper or lower bounds that contains the bound for each parameter. In our example, only parameter number 11 has an upper bound, and the number of total parameters is `n_par(model) = 31`, so we define
+The bound constraint is easy to specify: Just give a vector of upper or lower bounds that contains the bound for each parameter. In our example, only the parameter labeled `:λₗ` has an upper bound, and the number of total parameters is `n_par(model) = 31`, so we define
 
 ```@example constraints
 upper_bounds = fill(Inf, 31)
-upper_bounds[11] = 0.5
+upper_bounds[parind[:λₗ]] = 0.5
 ```
 
 The equailty and inequality constraints have to be reformulated to be of the form `x = 0` or `x ≤ 0`:
@@ -84,6 +86,8 @@ The equailty and inequality constraints have to be reformulated to be of the for
 Now they can be defined as functions of the parameter vector:
 
 ```@example constraints
+parind[:y3y7] # 29
+parind[:y8y4] # 30
 # θ[29] + θ[30] - 1 = 0.0
 function eq_constraint(θ, gradient)
     if length(gradient) > 0
@@ -94,6 +98,8 @@ function eq_constraint(θ, gradient)
     return θ[29] + θ[30] - 1
 end
 
+parind[:λ₂] # 3
+parind[:λ₃] # 4
 # θ[3] - θ[4] - 0.1 ≤ 0
 function ineq_constraint(θ, gradient)
     if length(gradient) > 0
@@ -109,7 +115,7 @@ If the algorithm needs gradients at an iteration, it will pass the vector `gradi
 With `if length(gradient) > 0` we check if the algorithm needs gradients, and if it does, we fill the `gradient` vector with the gradients 
 of the constraint w.r.t. the parameters.
 
-In NLopt, vector-valued constraints are also possible, but we refer to the documentation fot that.
+In NLopt, vector-valued constraints are also possible, but we refer to the documentation for that.
 
 ### Fit the model
 
@@ -153,10 +159,11 @@ As you can see, the optimizer converged (`:XTOL_REACHED`) and investigating the 
 
 ```@example constraints
 update_partable!(
-    partable, 
-    model_fit_constrained, 
+    partable,
+    :estimate_constr,
+    params(model_fit_constrained), 
     solution(model_fit_constrained), 
-    :estimate_constr)
+    )
 
 sem_summary(partable)
 ```

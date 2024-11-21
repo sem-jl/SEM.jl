@@ -13,7 +13,7 @@ To automatically reorder your variables in a way that makes this optimization po
 We use it as
 
 ```julia
-sort!(parameter_table)
+sort_vars!(parameter_table)
 
 model = Sem(
     specification = parameter_table,

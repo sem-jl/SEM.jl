@@ -29,39 +29,40 @@ function em_mvn(
     rtol_em = 1e-4,
     kwargs...,
 )
-    n_obs, n_man = observed.n_obs, Int(observed.n_man)
+    nvars = nobserved_vars(observed)
+    nsamps = nsamples(observed)
 
     # preallocate stuff?
-    𝔼x_pre = zeros(n_man)
-    𝔼xxᵀ_pre = zeros(n_man, n_man)
+    𝔼x_pre = zeros(nvars)
+    𝔼xxᵀ_pre = zeros(nvars, nvars)
 
     ### precompute for full cases
-    if length(observed.patterns[1]) == observed.n_man
-        for row in observed.rows[1]
+    if length(observed.patterns[1]) == nvars
+        for row in pattern_rows(observed)[1]
             row = observed.data_rowwise[row]
             𝔼x_pre += row
             𝔼xxᵀ_pre += row * row'
         end
     end
 
-    # ess = 𝔼x, 𝔼xxᵀ, ismissing, missingRows, n_obs
-    # estepFn = (em_model, data) -> estep(em_model, data, EXsum, EXXsum, ismissing, missingRows, n_obs)
+    # ess = 𝔼x, 𝔼xxᵀ, ismissing, missingRows, nsamps
+    # estepFn = (em_model, data) -> estep(em_model, data, EXsum, EXXsum, ismissing, missingRows, nsamps)
 
     # initialize
     em_model = start_em(observed; kwargs...)
-    em_model_prev = EmMVNModel(zeros(n_man, n_man), zeros(n_man), false)
+    em_model_prev = EmMVNModel(zeros(nvars, nvars), zeros(nvars), false)
     iter = 1
     done = false
-    𝔼x = zeros(n_man)
-    𝔼xxᵀ = zeros(n_man, n_man)
+    𝔼x = zeros(nvars)
+    𝔼xxᵀ = zeros(nvars, nvars)
 
     while !done
         em_mvn_Estep!(𝔼x, 𝔼xxᵀ, em_model, observed, 𝔼x_pre, 𝔼xxᵀ_pre)
-        em_mvn_Mstep!(em_model, n_obs, 𝔼x, 𝔼xxᵀ)
+        em_mvn_Mstep!(em_model, nsamps, 𝔼x, 𝔼xxᵀ)
 
         if iter > max_iter_em
             done = true
-            @warn "EM Algorithm for MVN missing data did not converge. Likelihood for FIML is not interpretable. 
+            @warn "EM Algorithm for MVN missing data did not converge. Likelihood for FIML is not interpretable.
             Maybe try passing different starting values via 'start_em = ...' "
         elseif iter > 1
             # done = isapprox(ll, ll_prev; rtol = rtol)
@@ -96,7 +97,7 @@ function em_mvn_Estep!(𝔼x, 𝔼xxᵀ, em_model, observed, 𝔼x_pre, 𝔼xx�
     Σ = em_model.Σ
 
     # Compute the expected sufficient statistics
-    for i in 2:length(observed.pattern_n_obs)
+    for i in 2:length(observed.pattern_nsamples)
 
         # observed and unobserved vars
         u = observed.patterns_not[i]
@@ -106,7 +107,7 @@ function em_mvn_Estep!(𝔼x, 𝔼xxᵀ, em_model, observed, 𝔼x_pre, 𝔼xx�
         V = Σ[u, u] - Σ[u, o] * (Σ[o, o] \ Σ[o, u])
 
         # loop trough data
-        for row in observed.rows[i]
+        for row in pattern_rows(observed)[i]
             m = μ[u] + Σ[u, o] * (Σ[o, o] \ (observed.data_rowwise[row] - μ[o]))
 
             𝔼xᵢ[u] = m
@@ -125,9 +126,9 @@ function em_mvn_Estep!(𝔼x, 𝔼xxᵀ, em_model, observed, 𝔼x_pre, 𝔼xx�
     𝔼xxᵀ .+= 𝔼xxᵀ_pre
 end
 
-function em_mvn_Mstep!(em_model, n_obs, 𝔼x, 𝔼xxᵀ)
-    em_model.μ = 𝔼x / n_obs
-    Σ = Symmetric(𝔼xxᵀ / n_obs - em_model.μ * em_model.μ')
+function em_mvn_Mstep!(em_model, nsamples, 𝔼x, 𝔼xxᵀ)
+    em_model.μ = 𝔼x / nsamples
+    Σ = Symmetric(𝔼xxᵀ / nsamples - em_model.μ * em_model.μ')
 
     # ridge Σ
     # while !isposdef(Σ)
@@ -152,7 +153,8 @@ end
 
 # use μ and Σ of full cases
 function start_em_observed(observed::SemObservedMissing; kwargs...)
-    if (length(observed.patterns[1]) == observed.n_man) & (observed.pattern_n_obs[1] > 1)
+    if (length(observed.patterns[1]) == nobserved_vars(observed)) &
+       (observed.pattern_nsamples[1] > 1)
         μ = copy(observed.obs_mean[1])
         Σ = copy(Symmetric(observed.obs_cov[1]))
         if !isposdef(Σ)
@@ -166,11 +168,11 @@ end
 
 # use μ = O and Σ = I
 function start_em_simple(observed::SemObservedMissing; kwargs...)
-    n_man = Int(observed.n_man)
-    μ = zeros(n_man)
-    Σ = rand(n_man, n_man)
+    nvars = nobserved_vars(observed)
+    μ = zeros(nvars)
+    Σ = rand(nvars, nvars)
     Σ = Σ * Σ'
-    # Σ = Matrix(1.0I, n_man, n_man)
+    # Σ = Matrix(1.0I, nvars, nvars)
     return EmMVNModel(Σ, μ, false)
 end
 

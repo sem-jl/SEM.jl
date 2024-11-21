@@ -15,6 +15,9 @@ dat_g2 = dat[dat.school.=="Grant-White", :]
 dat_miss_g1 = dat_missing[dat_missing.school.=="Pasteur", :]
 dat_miss_g2 = dat_missing[dat_missing.school.=="Grant-White", :]
 
+dat.school = ifelse.(dat.school .== "Pasteur", :Pasteur, :Grant_White)
+dat_missing.school = ifelse.(dat_missing.school .== "Pasteur", :Pasteur, :Grant_White)
+
 ############################################################################################
 ### specification - RAMMatrices
 ############################################################################################
@@ -56,7 +59,7 @@ specification_g1 = RAMMatrices(;
     A = A,
     S = S1,
     F = F,
-    parameters = x,
+    params = x,
     colnames = [:x1, :x2, :x3, :x4, :x5, :x6, :x7, :x8, :x9, :visual, :textual, :speed],
 )
 
@@ -64,14 +67,13 @@ specification_g2 = RAMMatrices(;
     A = A,
     S = S2,
     F = F,
-    parameters = x,
+    params = x,
     colnames = [:x1, :x2, :x3, :x4, :x5, :x6, :x7, :x8, :x9, :visual, :textual, :speed],
 )
 
 partable = EnsembleParameterTable(
-    specification_g1,
-    specification_g2;
-    groups = [:Pasteur, :Grant_White],
+    :Pasteur => specification_g1,
+    :Grant_White => specification_g2
 )
 
 specification_miss_g1 = nothing
@@ -111,14 +113,14 @@ graph = @StenoGraph begin
     _(latent_vars) ⇔ _(latent_vars)
 end
 
-partable = EnsembleParameterTable(;
-    graph = graph,
+partable = EnsembleParameterTable(
+    graph;
     observed_vars = observed_vars,
     latent_vars = latent_vars,
     groups = [:Pasteur, :Grant_White],
 )
 
-specification = RAMMatrices(partable)
+specification = convert(Dict{Symbol, RAMMatrices}, partable)
 
 specification_g1 = specification[:Pasteur]
 specification_g2 = specification[:Grant_White]
@@ -140,14 +142,14 @@ graph = @StenoGraph begin
     Symbol("1") → _(observed_vars)
 end
 
-partable_miss = EnsembleParameterTable(;
-    graph = graph,
+partable_miss = EnsembleParameterTable(
+    graph;
     observed_vars = observed_vars,
     latent_vars = latent_vars,
     groups = [:Pasteur, :Grant_White],
 )
 
-specification_miss = RAMMatrices(partable_miss)
+specification_miss = convert(Dict{Symbol, RAMMatrices}, partable_miss)
 
 specification_miss_g1 = specification_miss[:Pasteur]
 specification_miss_g2 = specification_miss[:Grant_White]

@@ -6,9 +6,9 @@ function fill_A_S_M!(
     A_indices::AbstractArrayParamsMap,
     S_indices::AbstractArrayParamsMap,
     M_indices::Union{AbstractArrayParamsMap, Nothing},
-    parameters::AbstractVector,
+    params::AbstractVector,
 )
-    @inbounds for (iA, iS, par) in zip(A_indices, S_indices, parameters)
+    @inbounds for (iA, iS, par) in zip(A_indices, S_indices, params)
         for index_A in iA
             A[index_A] = par
         end
@@ -19,7 +19,7 @@ function fill_A_S_M!(
     end
 
     if !isnothing(M)
-        @inbounds for (iM, par) in zip(M_indices, parameters)
+        @inbounds for (iM, par) in zip(M_indices, params)
             for index_M in iM
                 M[index_M] = par
             end
@@ -30,10 +30,10 @@ end
 # build the map from the index of the parameter to the linear indices
 # of this parameter occurences in M
 # returns ArrayParamsMap object
-function array_parameters_map(parameters::AbstractVector, M::AbstractArray)
-    params_index = Dict(param => i for (i, param) in enumerate(parameters))
+function array_params_map(params::AbstractVector, M::AbstractArray)
+    params_index = Dict(param => i for (i, param) in enumerate(params))
     T = Base.eltype(eachindex(M))
-    res = [Vector{T}() for _ in eachindex(parameters)]
+    res = [Vector{T}() for _ in eachindex(params)]
     for (i, val) in enumerate(M)
         par_ind = get(params_index, val, nothing)
         if !isnothing(par_ind)
@@ -105,9 +105,9 @@ end
 function fill_matrix!(
     M::AbstractMatrix,
     M_indices::AbstractArrayParamsMap,
-    parameters::AbstractVector,
+    params::AbstractVector,
 )
-    for (iM, par) in zip(M_indices, parameters)
+    for (iM, par) in zip(M_indices, params)
         for index_M in iM
             M[index_M] = par
         end

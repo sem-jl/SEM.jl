@@ -25,7 +25,7 @@ function se_bootstrap(
     end
 
     if isnothing(data)
-        data = get_data(observed(model(semfit)))
+        data = samples(observed(model(semfit)))
     end
 
     data = prepare_data_bootstrap(data)

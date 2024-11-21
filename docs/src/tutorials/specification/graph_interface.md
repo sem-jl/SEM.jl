@@ -16,9 +16,9 @@ observed_vars = ...
 latent_vars   = ...
 
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 
 model = Sem(
     specification = partable,
@@ -65,9 +65,9 @@ As you saw above and in the [A first model](@ref) example, the graph object need
 
 ```julia
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 ```
 
 The `ParameterTable` constructor also needs you to specify a vector of observed and latent variables, in the example above this would correspond to

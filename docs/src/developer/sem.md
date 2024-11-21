@@ -11,7 +11,8 @@ struct SemFiniteDiff{
     observed::O
     imply::I
     loss::L
-    optimizer::Dend
+    optimizer::D
+end
 ```
 
 Additionally, we need to define a method to compute at least the objective value, and if you want to use gradient based optimizers (which you most probably will), we need also to define a method to compute the gradient. For example, the respective fallback methods for all `AbstractSemSingle` models are defined as

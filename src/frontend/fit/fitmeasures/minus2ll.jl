@@ -25,7 +25,7 @@ minus2ll(sem_fit::SemFit, obs, imp, optimizer, args...) =
 
 # SemML ------------------------------------------------------------------------------------
 minus2ll(minimum::Number, obs, imp::Union{RAM, RAMSymbolic}, optimizer, loss_ml::SemML) =
-    n_obs(obs) * (minimum + log(2π) * n_man(obs))
+    nsamples(obs) * (minimum + log(2π) * nobserved_vars(obs))
 
 # WLS --------------------------------------------------------------------------------------
 minus2ll(minimum::Number, obs, imp::Union{RAM, RAMSymbolic}, optimizer, loss_ml::SemWLS) =
@@ -41,8 +41,8 @@ function minus2ll(
     loss_ml::SemFIML,
 )
     F = minimum
-    F *= n_obs(observed)
-    F += sum(log(2π) * observed.pattern_n_obs .* observed.pattern_nvar_obs)
+    F *= nsamples(observed)
+    F += sum(log(2π) * observed.pattern_nsamples .* observed.pattern_nobs_vars)
     return F
 end
 
@@ -53,26 +53,26 @@ function minus2ll(observed::SemObservedMissing)
         minus2ll(
             observed.em_model.μ,
             observed.em_model.Σ,
-            observed.n_obs,
-            observed.rows,
+            nsamples(observed),
+            pattern_rows(observed),
             observed.patterns,
             observed.obs_mean,
             observed.obs_cov,
-            observed.pattern_n_obs,
-            observed.pattern_nvar_obs,
+            observed.pattern_nsamples,
+            observed.pattern_nobs_vars,
         )
     else
         em_mvn(observed)
         minus2ll(
             observed.em_model.μ,
             observed.em_model.Σ,
-            observed.n_obs,
-            observed.rows,
+            nsamples(observed),
+            pattern_rows(observed),
             observed.patterns,
             observed.obs_mean,
             observed.obs_cov,
-            observed.pattern_n_obs,
-            observed.pattern_nvar_obs,
+            observed.pattern_nsamples,
+            observed.pattern_nobs_vars,
         )
     end
 end
@@ -85,13 +85,13 @@ function minus2ll(
     patterns,
     obs_mean,
     obs_cov,
-    pattern_n_obs,
-    pattern_nvar_obs,
+    pattern_nsamples,
+    pattern_nobs_vars,
 )
     F = 0.0
 
     for i in 1:length(rows)
-        nᵢ = pattern_n_obs[i]
+        nᵢ = pattern_nsamples[i]
         # missing pattern
         pattern = patterns[i]
         # observed data
@@ -106,7 +106,7 @@ function minus2ll(
         F += F_one_pattern(meandiffᵢ, Σᵢ⁻¹, Sᵢ, ld, nᵢ)
     end
 
-    F += sum(log(2π) * pattern_n_obs .* pattern_nvar_obs)
+    F += sum(log(2π) * pattern_nsamples .* pattern_nobs_vars)
     #F *= N
 
     return F

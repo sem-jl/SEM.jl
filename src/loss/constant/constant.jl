@@ -26,6 +26,7 @@ Analytic gradients and hessians are available.
 Subtype of `SemLossFunction`.
 """
 struct SemConstant{C} <: SemLossFunction
+    hessianeval::ExactHessian
     c::C
 end
 
@@ -34,16 +35,17 @@ end
 ############################################################################################
 
 function SemConstant(; constant_loss, kwargs...)
-    return SemConstant(constant_loss)
+    return SemConstant(ExactHessian(), constant_loss)
 end
 
 ############################################################################################
 ### methods
 ############################################################################################
 
-objective!(constant::SemConstant, par, model) = constant.c
-gradient!(constant::SemConstant, par, model) = zero(par)
-hessian!(constant::SemConstant, par, model) = zeros(eltype(par), length(par), length(par))
+objective(constant::SemConstant, model::AbstractSem, par) = constant.c
+gradient(constant::SemConstant, model::AbstractSem, par) = zero(par)
+hessian(constant::SemConstant, model::AbstractSem, par) =
+    zeros(eltype(par), length(par), length(par))
 
 ############################################################################################
 ### Recommended methods

@@ -39,9 +39,9 @@ graph = @StenoGraph begin
 end
 
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 ```
 
 Now, we construct the different parts:

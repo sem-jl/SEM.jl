@@ -16,8 +16,8 @@ function sem_summary(
     println("Convergence:                 $(convergence(sem_fit))")
     println("No. iterations/evaluations:  $(n_iterations(sem_fit))")
     print("\n")
-    println("Number of parameters:        $(n_par(sem_fit))")
-    println("Number of observations:      $(n_obs(sem_fit))")
+    println("Number of parameters:        $(nparams(sem_fit))")
+    println("Number of data samples:      $(nsamples(sem_fit))")
     print("\n")
     printstyled(
         "----------------------------------- Model ----------------------------------- \n";
@@ -51,6 +51,7 @@ function sem_summary(
     secondary_color = :light_yellow,
     digits = 2,
     show_variables = true,
+    show_columns = nothing
 )
     if show_variables
         print("\n")
@@ -60,19 +61,18 @@ function sem_summary(
         )
         print("\n")
         printstyled("Latent variables:    "; color = color)
-        for var in partable.variables[:latent_vars]
+        for var in partable.latent_vars
             print("$var ")
         end
         print("\n")
         printstyled("Observed variables:  "; color = color)
-        for var in partable.variables[:observed_vars]
+        for var in partable.observed_vars
             print("$var ")
         end
         print("\n")
-        if haskey(partable.variables, :sorted_vars) &&
-           (length(partable.variables[:sorted_vars]) > 0)
+        if length(partable.sorted_vars) > 0
             printstyled("Sorted variables:    "; color = color)
-            for var in partable.variables[:sorted_vars]
+            for var in partable.sorted_vars
                 print("$var ")
             end
             print("\n")
@@ -87,20 +87,25 @@ function sem_summary(
     print("\n")
 
     columns = keys(partable.columns)
+    show_columns = isnothing(show_columns) ? nothing : intersect(show_columns, columns)
 
     printstyled("Loadings: \n"; color = color)
     print("\n")
 
-    sorted_columns = [:to, :estimate, :identifier, :value_fixed, :start]
-    loading_columns = sort_partially(sorted_columns, columns)
-    header_cols = copy(loading_columns)
-    replace!(header_cols, :parameter_type => :type)
+    if isnothing(show_columns)
+        sorted_columns = [:to, :estimate, :param, :value_fixed, :start]
+        loading_columns = sort_partially(sorted_columns, columns)
+        header_cols = copy(loading_columns)
+    else
+        loading_columns = copy(show_columns)
+        header_cols = copy(loading_columns)
+    end
 
-    for var in partable.variables[:latent_vars]
+    for var in partable.latent_vars
         indicator_indices = findall(
-            (partable.columns[:from] .== var) .&
-            (partable.columns[:parameter_type] .== :→) .&
-            (partable.columns[:to] .∈ [partable.variables[:observed_vars]]),
+            r ->
+                (r.from == var) && (r.relation == :→) && (r.to ∈ partable.observed_vars),
+            partable,
         )
         loading_array = reduce(
             hcat,
@@ -116,6 +121,7 @@ function sem_summary(
             header = header_cols,
             tf = PrettyTables.tf_borderless,
             alignment = :l,
+            formatters = (v, i, j) -> isa(v, Number) && isnan(v) ? "" : v,
         )
         print("\n")
     end
@@ -123,33 +129,28 @@ function sem_summary(
     printstyled("Directed Effects: \n"; color = color)
 
     regression_indices = findall(
-        (partable.columns[:parameter_type] .== :→) .& (
-            (
-                (partable.columns[:to] .∈ [partable.variables[:observed_vars]]) .&
-                (partable.columns[:from] .∈ [partable.variables[:observed_vars]])
-            ) .|
-            (
-                (partable.columns[:to] .∈ [partable.variables[:latent_vars]]) .&
-                (partable.columns[:from] .∈ [partable.variables[:observed_vars]])
-            ) .|
-            (
-                (partable.columns[:to] .∈ [partable.variables[:latent_vars]]) .&
-                (partable.columns[:from] .∈ [partable.variables[:latent_vars]])
-            )
-        ),
+        r ->
+            (r.relation == :→) && (
+                ((r.to ∈ partable.observed_vars) && (r.from ∈ partable.observed_vars)) ||
+                ((r.to ∈ partable.latent_vars) && (r.from ∈ partable.observed_vars)) ||
+                ((r.to ∈ partable.latent_vars) && (r.from ∈ partable.latent_vars))
+            ),
+        partable,
     )
 
-    sorted_columns =
-        [:from, :parameter_type, :to, :estimate, :identifier, :value_fixed, :start]
-    regression_columns = sort_partially(sorted_columns, columns)
+    if isnothing(show_columns)
+        sorted_columns = [:from, :relation, :to, :estimate, :param, :value_fixed, :start]
+        regression_columns = sort_partially(sorted_columns, columns)
+    else
+        regression_columns = copy(show_columns)
+    end
 
     regression_array = reduce(
         hcat,
         check_round(partable.columns[c][regression_indices]; digits = digits) for
         c in regression_columns
     )
-    regression_columns[2] = Symbol("")
-    replace!(regression_columns, :parameter_type => :type)
+    regression_columns[2] = regression_columns[2] == :relation ? Symbol("") : regression_columns[2]
 
     print("\n")
     pretty_table(
@@ -157,91 +158,90 @@ function sem_summary(
         header = regression_columns,
         tf = PrettyTables.tf_borderless,
         alignment = :l,
+        formatters = (v, i, j) -> isa(v, Number) && isnan(v) ? "" : v,
     )
     print("\n")
 
     printstyled("Variances: \n"; color = color)
 
-    variance_indices = findall(
-        (partable.columns[:parameter_type] .== :↔) .&
-        (partable.columns[:to] .== partable.columns[:from]),
-    )
+    var_indices = findall(r -> r.relation == :↔ && r.to == r.from, partable)
 
-    sorted_columns =
-        [:from, :parameter_type, :to, :estimate, :identifier, :value_fixed, :start]
-    variance_columns = sort_partially(sorted_columns, columns)
+    if isnothing(show_columns)
+        sorted_columns = [:from, :relation, :to, :estimate, :param, :value_fixed, :start]
+        var_columns = sort_partially(sorted_columns, columns)
+    else
+        var_columns = copy(show_columns)
+    end
 
-    variance_array = reduce(
+    var_array = reduce(
         hcat,
-        check_round(partable.columns[c][variance_indices]; digits = digits) for
-        c in variance_columns
+        check_round(partable.columns[c][var_indices]; digits) for c in var_columns
     )
-    variance_columns[2] = Symbol("")
-    replace!(variance_columns, :parameter_type => :type)
+    var_columns[2] = var_columns[2] == :relation ? Symbol("") : var_columns[2]
 
     print("\n")
     pretty_table(
-        variance_array;
-        header = variance_columns,
+        var_array;
+        header = var_columns,
         tf = PrettyTables.tf_borderless,
         alignment = :l,
+        formatters = (v, i, j) -> isa(v, Number) && isnan(v) ? "" : v,
     )
     print("\n")
 
     printstyled("Covariances: \n"; color = color)
 
-    variance_indices = findall(
-        (partable.columns[:parameter_type] .== :↔) .&
-        (partable.columns[:to] .!= partable.columns[:from]),
-    )
+    covar_indices = findall(r -> r.relation == :↔ && r.to != r.from, partable)
 
-    sorted_columns =
-        [:from, :parameter_type, :to, :estimate, :identifier, :value_fixed, :start]
-    variance_columns = sort_partially(sorted_columns, columns)
+    if isnothing(show_columns)
+        covar_columns = sort_partially(sorted_columns, columns)
+    else
+        covar_columns = copy(show_columns)
+    end
 
-    variance_array = reduce(
+    covar_array = reduce(
         hcat,
-        check_round(partable.columns[c][variance_indices]; digits = digits) for
-        c in variance_columns
+        check_round(partable.columns[c][covar_indices]; digits = digits) for
+        c in covar_columns
     )
-    variance_columns[2] = Symbol("")
-    replace!(variance_columns, :parameter_type => :type)
+    covar_columns[2] = covar_columns[2] == :relation ? Symbol("") : covar_columns[2]
 
     print("\n")
     pretty_table(
-        variance_array;
-        header = variance_columns,
+        covar_array;
+        header = covar_columns,
         tf = PrettyTables.tf_borderless,
         alignment = :l,
+        formatters = (v, i, j) -> isa(v, Number) && isnan(v) ? "" : v,
     )
     print("\n")
 
-    mean_indices = findall(
-        (partable.columns[:parameter_type] .== :→) .&
-        (partable.columns[:from] .== Symbol("1")),
-    )
+    mean_indices = findall(r -> (r.relation == :→) && (r.from == Symbol("1")), partable)
 
     if length(mean_indices) > 0
         printstyled("Means: \n"; color = color)
 
-        sorted_columns =
-            [:from, :parameter_type, :to, :estimate, :identifier, :value_fixed, :start]
-        variance_columns = sort_partially(sorted_columns, columns)
+        if isnothing(show_columns)
+            sorted_columns = [:from, :relation, :to, :estimate, :param, :value_fixed, :start]
+            mean_columns = sort_partially(sorted_columns, columns)
+        else
+            mean_columns = copy(show_columns)
+        end
 
-        variance_array = reduce(
+        mean_array = reduce(
             hcat,
             check_round(partable.columns[c][mean_indices]; digits = digits) for
-            c in variance_columns
+            c in mean_columns
         )
-        variance_columns[2] = Symbol("")
-        replace!(variance_columns, :parameter_type => :type)
+        mean_columns[2] = mean_columns[2] == :relation ? Symbol("") : mean_columns[2]
 
         print("\n")
         pretty_table(
-            variance_array;
-            header = variance_columns,
+            mean_array;
+            header = mean_columns,
             tf = PrettyTables.tf_borderless,
             alignment = :l,
+            formatters = (v, i, j) -> isa(v, Number) && isnan(v) ? "" : v,
         )
         print("\n")
     end
@@ -256,6 +256,7 @@ function sem_summary(
     secondary_color = :light_yellow,
     digits = 2,
     show_variables = true,
+    show_columns = nothing
 )
     if show_variables
         print("\n")
@@ -266,19 +267,18 @@ function sem_summary(
         print("\n")
         let partable = partable.tables[[keys(partable.tables)...][1]]
             printstyled("Latent variables:    "; color = color)
-            for var in partable.variables[:latent_vars]
+            for var in partable.latent_vars
                 print("$var ")
             end
             print("\n")
             printstyled("Observed variables:  "; color = color)
-            for var in partable.variables[:observed_vars]
+            for var in partable.observed_vars
                 print("$var ")
             end
             print("\n")
-            if haskey(partable.variables, :sorted_vars) &&
-               (length(partable.variables[:sorted_vars]) > 0)
+            if length(partable.sorted_vars) > 0
                 printstyled("Sorted variables:    "; color = color)
-                for var in partable.variables[:sorted_vars]
+                for var in partable.sorted_vars
                     print("$var ")
                 end
                 print("\n")
@@ -297,6 +297,7 @@ function sem_summary(
             secondary_color = secondary_color,
             digits = digits,
             show_variables = false,
+            show_columns = show_columns
         )
     end
 
@@ -323,10 +324,18 @@ function sort_partially(sorted, to_sort)
     return out
 end
 
+function Base.findall(fun::Function, partable::ParameterTable)
+    rows = Int[]
+    for (i, r) in enumerate(partable)
+        fun(r) ? push!(rows, i) : nothing
+    end
+    return rows
+end
+
 """
     (1) sem_summary(sem_fit::SemFit; show_fitmeasures = false)
 
-    (2) sem_summary(partable::AbstractParameterTable)
+    (2) sem_summary(partable::AbstractParameterTable; ...)
 
 Print information about (1) a fitted SEM or (2) a parameter table to stdout.
 
@@ -336,5 +345,6 @@ Print information about (1) a fitted SEM or (2) a parameter table to stdout.
 - `color = :light_cyan`: color of some parts of the printed output. Can be adjusted for readability.
 - `secondary_color = :light_yellow`
 - `show_variables = true`
+- `show_columns = nothing`: columns names to include in the output e.g.`[:from, :to, :estimate]`)
 """
 function sem_summary end

@@ -10,7 +10,7 @@
         start_covariances_obs_lat = 0.0,
         start_means = 0.0,
         kwargs...)
-    
+
 Return a vector of simple starting values.
 """
 function start_simple end
@@ -21,7 +21,7 @@ function start_simple(model::AbstractSemSingle; kwargs...)
         model.observed,
         model.imply,
         model.optimizer,
-        model.loss.functions...,
+        model.loss.functions...;
         kwargs...,
     )
 end
@@ -62,17 +62,17 @@ function start_simple(
     start_means = 0.0,
     kwargs...,
 )
-    A_ind, S_ind, F_ind, M_ind, parameters = ram_matrices.A_ind,
+    A_ind, S_ind, F_ind, M_ind, n_par = ram_matrices.A_ind,
     ram_matrices.S_ind,
     ram_matrices.F_ind,
     ram_matrices.M_ind,
-    ram_matrices.parameters
+    nparams(ram_matrices)
 
-    n_par = length(parameters)
     start_val = zeros(n_par)
-    n_var, n_nod = ram_matrices.size_F
+    n_obs = nobserved_vars(ram_matrices)
+    n_var = nvars(ram_matrices)
 
-    C_indices = CartesianIndices((n_nod, n_nod))
+    C_indices = CartesianIndices((n_var, n_var))
 
     for i in 1:n_par
         if length(S_ind[i]) != 0

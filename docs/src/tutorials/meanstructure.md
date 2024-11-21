@@ -39,9 +39,9 @@ graph = @StenoGraph begin
 end
 
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 ```
 
 ```julia
@@ -77,9 +77,9 @@ graph = @StenoGraph begin
 end
 
 partable = ParameterTable(
+    graph,
     latent_vars = latent_vars, 
-    observed_vars = observed_vars, 
-    graph = graph)
+    observed_vars = observed_vars)
 ```
 
 that is, all observed variable means are estimated freely.

@@ -74,7 +74,7 @@ model = Sem(
     specification = partable,
     data = data,
     imply = RAMSymbolic,
-    loss = SemWLS
+    loss = SemWLS,
     wls_weight_matrix = W
 )
 

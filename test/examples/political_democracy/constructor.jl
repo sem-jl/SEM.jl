@@ -1,4 +1,5 @@
 using Statistics: cov, mean
+using Random
 
 ############################################################################################
 ### models w.o. meanstructure
@@ -12,7 +13,7 @@ model_ml_cov = Sem(
     obs_cov = cov(Matrix(dat)),
     obs_colnames = Symbol.(names(dat)),
     optimizer = semoptimizer,
-    n_obs = 75,
+    nsamples = 75,
 )
 
 model_ls_sym = Sem(
@@ -46,7 +47,7 @@ model_constant = Sem(
 model_ml_weighted = Sem(
     specification = partable,
     data = dat,
-    loss_weights = (n_obs(model_ml),),
+    loss_weights = (nsamples(model_ml),),
     optimizer = semoptimizer,
 )
 
@@ -87,7 +88,7 @@ for (model, name, solution_name) in zip(models, model_names, solution_names)
         @testset "$(name)_solution" begin
             solution = sem_fit(model)
             update_estimate!(partable, solution)
-            @test compare_estimates(partable, solution_lav[solution_name]; atol = 1e-2)
+            test_estimates(partable, solution_lav[solution_name]; atol = 1e-2)
         end
     catch
     end
@@ -116,7 +117,7 @@ end
     solution_ml_weighted = sem_fit(model_ml_weighted)
     @test isapprox(solution(solution_ml), solution(solution_ml_weighted), rtol = 1e-3)
     @test isapprox(
-        n_obs(model_ml) * StructuralEquationModels.minimum(solution_ml),
+        nsamples(model_ml) * StructuralEquationModels.minimum(solution_ml),
         StructuralEquationModels.minimum(solution_ml_weighted),
         rtol = 1e-6,
     )
@@ -131,7 +132,7 @@ end
     test_fitmeasures(fit_measures(solution_ml), solution_lav[:fitmeasures_ml]; atol = 1e-3)
 
     update_se_hessian!(partable, solution_ml)
-    @test compare_estimates(
+    test_estimates(
         partable,
         solution_lav[:parameter_estimates_ml];
         atol = 1e-3,
@@ -152,13 +153,51 @@ end
     @test ismissing(fm[:AIC]) && ismissing(fm[:BIC]) && ismissing(fm[:minus2ll])
 
     update_se_hessian!(partable, solution_ls)
-    @test compare_estimates(
+    test_estimates(
         partable,
         solution_lav[:parameter_estimates_ls];
         atol = 1e-2,
         col = :se,
         lav_col = :se,
     )
+end
+
+############################################################################################
+### data simulation
+############################################################################################
+
+@testset "data_simulation_wo_mean" begin
+    # parameters to recover
+    params = start_simple(
+        model_ml;
+        start_loadings = 0.5,
+        start_regressions = 0.5,
+        start_variances_observed = 0.5,
+        start_variances_latent = 1.0,
+        start_covariances_observed = 0.2,
+    )
+    # set seed for simulation
+    Random.seed!(83472834)
+    colnames = Symbol.(names(example_data("political_democracy")))
+    # simulate data
+    model_ml_new = swap_observed(
+        model_ml,
+        data = rand(model_ml, params, 1_000_000),
+        specification = spec,
+        obs_colnames = colnames,
+    )
+    model_ml_sym_new = swap_observed(
+        model_ml_sym,
+        data = rand(model_ml_sym, params, 1_000_000),
+        specification = spec,
+        obs_colnames = colnames,
+    )
+    # fit models
+    sol_ml = solution(sem_fit(model_ml_new))
+    sol_ml_sym = solution(sem_fit(model_ml_sym_new))
+    # check solution
+    @test maximum(abs.(sol_ml - params)) < 0.01
+    @test maximum(abs.(sol_ml_sym - params)) < 0.01
 end
 
 ############################################################################################
@@ -199,22 +238,19 @@ if semoptimizer == SemOptimizerOptim
     @testset "ml_solution_hessian" begin
         solution = sem_fit(model_ml)
         update_estimate!(partable, solution)
-        @test compare_estimates(
-            partable,
-            solution_lav[:parameter_estimates_ml];
-            atol = 1e-3,
-        )
+        test_estimates(partable, solution_lav[:parameter_estimates_ml]; atol = 1e-3)
     end
 
     @testset "ls_solution_hessian" begin
         solution = sem_fit(model_ls)
         update_estimate!(partable, solution)
-        @test compare_estimates(
+        test_estimates(
             partable,
             solution_lav[:parameter_estimates_ls];
             atol = 0.002,
             rtol = 0.0,
-        ) skip = true
+            skip = true,
+        )
     end
 end
 
@@ -247,7 +283,7 @@ model_ml_cov = Sem(
     obs_colnames = Symbol.(names(dat)),
     meanstructure = true,
     optimizer = semoptimizer,
-    n_obs = 75,
+    nsamples = 75,
 )
 
 model_ml_sym = Sem(
@@ -286,7 +322,7 @@ for (model, name, solution_name) in zip(models, model_names, solution_names)
         @testset "$(name)_solution_mean" begin
             solution = sem_fit(model)
             update_estimate!(partable_mean, solution)
-            @test compare_estimates(partable_mean, solution_lav[solution_name]; atol = 1e-2)
+            test_estimates(partable_mean, solution_lav[solution_name]; atol = 1e-2)
         end
     catch
     end
@@ -305,7 +341,7 @@ end
     )
 
     update_se_hessian!(partable_mean, solution_ml)
-    @test compare_estimates(
+    test_estimates(
         partable_mean,
         solution_lav[:parameter_estimates_ml_mean];
         atol = 0.002,
@@ -326,13 +362,54 @@ end
     @test ismissing(fm[:AIC]) && ismissing(fm[:BIC]) && ismissing(fm[:minus2ll])
 
     update_se_hessian!(partable_mean, solution_ls)
-    @test compare_estimates(
+    test_estimates(
         partable_mean,
         solution_lav[:parameter_estimates_ls_mean];
         atol = 1e-2,
         col = :se,
         lav_col = :se,
     )
+end
+
+############################################################################################
+### data simulation
+############################################################################################
+
+@testset "data_simulation_with_mean" begin
+    # parameters to recover
+    params = start_simple(
+        model_ml;
+        start_loadings = 0.5,
+        start_regressions = 0.5,
+        start_variances_observed = 0.5,
+        start_variances_latent = 1.0,
+        start_covariances_observed = 0.2,
+        start_means = 0.5,
+    )
+    # set seed for simulation
+    Random.seed!(83472834)
+    colnames = Symbol.(names(example_data("political_democracy")))
+    # simulate data
+    model_ml_new = swap_observed(
+        model_ml,
+        data = rand(model_ml, params, 1_000_000),
+        specification = spec,
+        obs_colnames = colnames,
+        meanstructure = true,
+    )
+    model_ml_sym_new = swap_observed(
+        model_ml_sym,
+        data = rand(model_ml_sym, params, 1_000_000),
+        specification = spec,
+        obs_colnames = colnames,
+        meanstructure = true,
+    )
+    # fit models
+    sol_ml = solution(sem_fit(model_ml_new))
+    sol_ml_sym = solution(sem_fit(model_ml_sym_new))
+    # check solution
+    @test maximum(abs.(sol_ml - params)) < 0.01
+    @test maximum(abs.(sol_ml_sym - params)) < 0.01
 end
 
 ############################################################################################
@@ -379,21 +456,13 @@ end
 @testset "fiml_solution" begin
     solution = sem_fit(model_ml)
     update_estimate!(partable_mean, solution)
-    @test compare_estimates(
-        partable_mean,
-        solution_lav[:parameter_estimates_fiml];
-        atol = 1e-2,
-    )
+    test_estimates(partable_mean, solution_lav[:parameter_estimates_fiml]; atol = 1e-2)
 end
 
 @testset "fiml_solution_symbolic" begin
     solution = sem_fit(model_ml_sym)
     update_estimate!(partable_mean, solution)
-    @test compare_estimates(
-        partable_mean,
-        solution_lav[:parameter_estimates_fiml];
-        atol = 1e-2,
-    )
+    test_estimates(partable_mean, solution_lav[:parameter_estimates_fiml]; atol = 1e-2)
 end
 
 ############################################################################################
@@ -409,7 +478,7 @@ end
     )
 
     update_se_hessian!(partable_mean, solution_ml)
-    @test compare_estimates(
+    test_estimates(
         partable_mean,
         solution_lav[:parameter_estimates_fiml];
         atol = 0.002,

@@ -20,3 +20,10 @@ sem_fit(
 ```
 """
 function sem_fit end
+
+# dispatch on optimizer
+sem_fit(model::AbstractSem; kwargs...) = sem_fit(model.optimizer, model; kwargs...)
+
+# fallback method
+sem_fit(optimizer::SemOptimizer, model::AbstractSem; kwargs...) =
+    error("Optimizer $(optimizer) support not implemented.")

@@ -33,15 +33,7 @@ function semvec(observed, imply, loss, optimizer)
     return sem_vec
 end
 
-function get_observed(rowind, data, semobserved; args = (), kwargs = NamedTuple())
-    observed_vec = Vector{semobserved}(undef, length(rowind))
-    for i in 1:length(rowind)
-        observed_vec[i] = semobserved(args...; data = Matrix(data[rowind[i], :]), kwargs...)
-    end
-    return observed_vec
-end
-
-skipmissing_mean(mat::AbstractMatrix) = 
+skipmissing_mean(mat::AbstractMatrix) =
     [mean(skipmissing(coldata)) for coldata in eachcol(mat)]
 
 function F_one_person(imp_mean, meandiff, inverse, data, logdet)
@@ -111,143 +103,49 @@ function cov_and_mean(rows; corrected = false)
     return obs_cov, vec(obs_mean)
 end
 
-function duplication_matrix(nobs)
-    nobs = Int(nobs)
-    n1 = Int(nobs * (nobs + 1) * 0.5)
-    n2 = Int(nobs^2)
-    Dt = zeros(n1, n2)
-
-    for j in 1:nobs
-        for i in j:nobs
-            u = zeros(n1)
-            u[Int((j - 1) * nobs + i - 0.5 * j * (j - 1))] = 1
-            T = zeros(nobs, nobs)
-            T[j, i] = 1
-            T[i, j] = 1
-            Dt += u * transpose(vec(T))
+# n²×(n(n+1)/2) matrix to transform a vector of lower
+# triangular entries into a vectorized form of a n×n symmetric matrix,
+# opposite of elimination_matrix()
+function duplication_matrix(n::Integer)
+    ntri = div(n * (n + 1), 2)
+    D = zeros(n^2, ntri)
+    for j in 1:n
+        for i in j:n
+            tri_ix               = (j - 1) * n + i - div(j * (j - 1), 2)
+            D[j+n*(i-1), tri_ix] = 1
+            D[i+n*(j-1), tri_ix] = 1
         end
     end
-    D = transpose(Dt)
     return D
 end
 
-function elimination_matrix(nobs)
-    nobs = Int(nobs)
-    n1 = Int(nobs * (nobs + 1) * 0.5)
-    n2 = Int(nobs^2)
-    L = zeros(n1, n2)
-
-    for j in 1:nobs
-        for i in j:nobs
-            u = zeros(n1)
-            u[Int((j - 1) * nobs + i - 0.5 * j * (j - 1))] = 1
-            T = zeros(nobs, nobs)
-            T[i, j] = 1
-            L += u * transpose(vec(T))
+# (n(n+1)/2)×n² matrix to transform a
+# vectorized form of a n×n symmetric matrix
+# into vector of its lower triangular entries,
+# opposite of duplication_matrix()
+function elimination_matrix(n::Integer)
+    ntri = div(n * (n + 1), 2)
+    L = zeros(ntri, n^2)
+    for j in 1:n
+        for i in j:n
+            tri_ix = (j - 1) * n + i - div(j * (j - 1), 2)
+            L[tri_ix, i+n*(j-1)] = 1
         end
     end
     return L
 end
 
-function commutation_matrix(n; tosparse = false)
-    M = zeros(n^2, n^2)
-
-    for i in 1:n
-        for j in 1:n
-            M[i+n*(j-1), j+n*(i-1)] = 1.0
+# returns the vector of non-unique values in the order of appearance
+# each non-unique values is reported once
+function nonunique(values::AbstractVector)
+    value_counts = Dict{eltype(values), Int}()
+    res = similar(values, 0)
+    for v in values
+        n = get!(value_counts, v, 0)
+        if n == 1 # second encounter
+            push!(res, v)
         end
+        value_counts[v] = n + 1
     end
-
-    if tosparse
-        M = sparse(M)
-    end
-
-    return M
-end
-
-function commutation_matrix_pre_square(A)
-    n2 = size(A, 1)
-    n = Int(sqrt(n2))
-
-    ind = repeat(1:n, inner = n)
-    indadd = (0:(n-1)) * n
-    for i in 1:n
-        ind[((i-1)*n+1):i*n] .+= indadd
-    end
-
-    A_post = A[ind, :]
-
-    return A_post
-end
-
-function commutation_matrix_pre_square_add!(B, A) # comuptes B + KₙA
-    n2 = size(A, 1)
-    n = Int(sqrt(n2))
-
-    ind = repeat(1:n, inner = n)
-    indadd = (0:(n-1)) * n
-    for i in 1:n
-        ind[((i-1)*n+1):i*n] .+= indadd
-    end
-
-    @views @inbounds B .+= A[ind, :]
-
-    return B
-end
-
-function get_commutation_lookup(n2::Int64)
-    n = Int(sqrt(n2))
-    ind = repeat(1:n, inner = n)
-    indadd = (0:(n-1)) * n
-    for i in 1:n
-        ind[((i-1)*n+1):i*n] .+= indadd
-    end
-
-    lookup = Dict{Int64, Int64}()
-
-    for i in 1:n2
-        j = findall(x -> (x == i), ind)[1]
-        push!(lookup, i => j)
-    end
-
-    return lookup
-end
-
-function commutation_matrix_pre_square!(A::SparseMatrixCSC, lookup) # comuptes B + KₙA
-    for (i, rowind) in enumerate(A.rowval)
-        A.rowval[i] = lookup[rowind]
-    end
-end
-
-function commutation_matrix_pre_square!(A::SparseMatrixCSC) # computes KₙA
-    lookup = get_commutation_lookup(size(A, 2))
-    commutation_matrix_pre_square!(A, lookup)
-end
-
-function commutation_matrix_pre_square(A::SparseMatrixCSC)
-    B = copy(A)
-    commutation_matrix_pre_square!(B)
-    return B
-end
-
-function commutation_matrix_pre_square(A::SparseMatrixCSC, lookup)
-    B = copy(A)
-    commutation_matrix_pre_square!(B, lookup)
-    return B
-end
-
-function commutation_matrix_pre_square_add_mt!(B, A) # comuptes B + KₙA # 0 allocations but slower
-    n2 = size(A, 1)
-    n = Int(sqrt(n2))
-
-    indadd = (0:(n-1)) * n
-
-    Threads.@threads for i in 1:n
-        for j in 1:n
-            row = i + indadd[j]
-            @views @inbounds B[row, :] .+= A[row, :]
-        end
-    end
-
-    return B
+    return res
 end
