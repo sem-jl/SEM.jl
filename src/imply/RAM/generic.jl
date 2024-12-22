@@ -65,23 +65,7 @@ Additional interfaces
 Only available in gradient! calls:
 - `I_A⁻¹(::RAM)` -> ``(I-A)^{-1}``
 """
-mutable struct RAM{
-    MS,
-    A1,
-    A2,
-    A3,
-    A4,
-    A5,
-    A6,
-    V2,
-    M1,
-    M2,
-    M3,
-    M4,
-    S1,
-    S2,
-    S3,
-} <: SemImply
+mutable struct RAM{MS, A1, A2, A3, A4, A5, A6, V2, M1, M2, M3, M4, S1, S2, S3} <: SemImply
     meanstruct::MS
     hessianeval::ExactHessian
 
