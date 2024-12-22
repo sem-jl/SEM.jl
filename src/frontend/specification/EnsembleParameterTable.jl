@@ -19,7 +19,7 @@ EnsembleParameterTable(::Nothing; params::Union{Nothing, Vector{Symbol}} = nothi
     )
 
 # convert pairs to dict
-EnsembleParameterTable(ps::Pair{K, V}...; params = nothing) where {K, V} = 
+EnsembleParameterTable(ps::Pair{K, V}...; params = nothing) where {K, V} =
     EnsembleParameterTable(Dict(ps...); params = params)
 
 # dictionary of SEM specifications
@@ -148,8 +148,6 @@ end
 ############################################################################################
 
 function Base.:(==)(p1::EnsembleParameterTable, p2::EnsembleParameterTable)
-    out = 
-        (p1.tables == p2.tables) &&
-        (p1.params == p2.params)
+    out = (p1.tables == p2.tables) && (p1.params == p2.params)
     return out
 end
