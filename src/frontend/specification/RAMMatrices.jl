@@ -36,17 +36,22 @@ end
 
 latent_var_indices(ram::RAMMatrices) = [i for i in axes(ram.F, 2) if islatent_var(ram, i)]
 
-# observed variables in the order as they appear in ram.F rows
-function observed_vars(ram::RAMMatrices)
+# observed variables, if order=:rows, the order is as they appear in ram.F rows
+# if order=:columns, the order is as they appear in the comined variables list (ram.F columns)
+function observed_vars(ram::RAMMatrices; order::Symbol = :rows)
+    order ∈ [:rows, :columns] ||
+        throw(ArgumentError("order kwarg should be :rows or :cols"))
     if isnothing(ram.vars)
         @warn "Your RAMMatrices do not contain variable names. Please make sure the order of variables in your data is correct!"
         return nothing
     else
+        nobs = 0
         obs_vars = Vector{Symbol}(undef, nobserved_vars(ram))
         @inbounds for (i, v) in enumerate(vars(ram))
             colptr = ram.F.colptr[i]
             if ram.F.colptr[i+1] > colptr # is observed
-                obs_vars[ram.F.rowval[colptr]] = v
+                nobs += 1
+                obs_vars[order == :rows ? ram.F.rowval[colptr] : nobs] = v
             end
         end
         return obs_vars
