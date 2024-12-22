@@ -17,9 +17,8 @@ model_ml_multigroup2 = SemEnsemble(
     data = dat,
     column = :school,
     groups = [:Pasteur, :Grant_White],
-    loss = SemML
+    loss = SemML,
 )
-
 
 # gradients
 @testset "ml_gradients_multigroup" begin
@@ -283,7 +282,7 @@ if !isnothing(specification_miss_g1)
         groups = [:Pasteur, :Grant_White],
         loss = SemFIML,
         observed = SemObservedMissing,
-        meanstructure = true
+        meanstructure = true,
     )
 
     ############################################################################################
