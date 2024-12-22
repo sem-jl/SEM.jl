@@ -56,7 +56,7 @@ end
 #=
 function batch_sym_inv_update!(fun::Union{LossFunction, DiffFunction}, model)
     M_inv = inv(fun.choleskys[1])
-    for i = 1:size(fun.inverses, 1)
+    for i in 1:size(fun.inverses, 1)
         if size(model.observed.patterns_not[i]) == 0
             fun.inverses[i] .= M_inv
         else
