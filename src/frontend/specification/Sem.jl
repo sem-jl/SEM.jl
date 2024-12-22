@@ -20,44 +20,42 @@ function Sem(;
     return sem
 end
 
-nvars(sem::AbstractSemSingle) = nvars(sem.imply)
-nobserved_vars(sem::AbstractSemSingle) = nobserved_vars(sem.imply)
-nlatent_vars(sem::AbstractSemSingle) = nlatent_vars(sem.imply)
-
-vars(sem::AbstractSemSingle) = vars(sem.imply)
-observed_vars(sem::AbstractSemSingle) = observed_vars(sem.imply)
-latent_vars(sem::AbstractSemSingle) = latent_vars(sem.imply)
-
-nsamples(sem::AbstractSemSingle) = nsamples(sem.observed)
-
-params(model::AbstractSem) = params(model.imply)
-
-# sum of samples in all sub-models
-nsamples(ensemble::SemEnsemble) = sum(nsamples, ensemble.sems)
-
-############################################################################################
-# additional methods
-############################################################################################
-"""
-    observed(model::AbstractSemSingle) -> SemObserved
-
-Returns the observed part of a model.
-"""
-observed(model::AbstractSemSingle) = model.observed
-
 """
     imply(model::AbstractSemSingle) -> SemImply
 
-Returns the imply part of a model.
+Returns the [*implied*](@ref SemImply) part of a model.
 """
 imply(model::AbstractSemSingle) = model.imply
+
+nvars(model::AbstractSemSingle) = nvars(imply(model))
+nobserved_vars(model::AbstractSemSingle) = nobserved_vars(imply(model))
+nlatent_vars(model::AbstractSemSingle) = nlatent_vars(imply(model))
+
+vars(model::AbstractSemSingle) = vars(imply(model))
+observed_vars(model::AbstractSemSingle) = observed_vars(imply(model))
+latent_vars(model::AbstractSemSingle) = latent_vars(imply(model))
+
+params(model::AbstractSemSingle) = params(imply(model))
+nparams(model::AbstractSemSingle) = nparams(imply(model))
+
+"""
+    observed(model::AbstractSemSingle) -> SemObserved
+
+Returns the [*observed*](@ref SemObserved) part of a model.
+"""
+observed(model::AbstractSemSingle) = model.observed
+
+nsamples(model::AbstractSemSingle) = nsamples(observed(model))
 
 """
     loss(model::AbstractSemSingle) -> SemLoss
 
-Returns the loss part of a model.
+Returns the [*loss*](@ref SemLoss) function of a model.
 """
 loss(model::AbstractSemSingle) = model.loss
+
+# sum of samples in all sub-models
+nsamples(ensemble::SemEnsemble) = sum(nsamples, ensemble.sems)
 
 function SemFiniteDiff(;
     specification = ParameterTable,
