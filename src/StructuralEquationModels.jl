@@ -26,6 +26,7 @@ include("objective_gradient_hessian.jl")
 
 # helper objects and functions
 include("additional_functions/commutation_matrix.jl")
+include("additional_functions/sparse_utils.jl")
 include("additional_functions/params_array.jl")
 
 # fitted objects
