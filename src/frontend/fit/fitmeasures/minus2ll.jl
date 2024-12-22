@@ -40,12 +40,7 @@ end
 # compute likelihood for missing data - H1 -------------------------------------------------
 # -2ll =  ∑ log(2π)*(nᵢ + mᵢ) + ln(Σᵢ) + (mᵢ - μᵢ)ᵀ Σᵢ⁻¹ (mᵢ - μᵢ)) + tr(SᵢΣᵢ)
 function minus2ll(observed::SemObservedMissing)
-    # fit EM-based mean and cov if not yet fitted
-    # FIXME EM could be very computationally expensive
-    observed.em_model.fitted || em_mvn(observed)
-
-    Σ = observed.em_model.Σ
-    μ = observed.em_model.μ
+    Σ, μ = obs_cov(observed), obs_mean(observed)
 
     # FIXME: this code is duplicate to objective(fiml, ...)
     F = sum(observed.patterns) do pat
