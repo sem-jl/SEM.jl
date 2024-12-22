@@ -36,6 +36,7 @@ function em_mvn(
     max_iter_em::Integer = 100,
     rtol_em::Number = 1e-4,
     max_nsamples_em::Union{Integer, Nothing} = nothing,
+    min_eigval::Union{Number, Nothing} = nothing,
     kwargs...,
 )
     nobs_vars = nobserved_vars(patterns[1])
@@ -76,6 +77,7 @@ function em_mvn(
             𝔼x_full,
             nsamples_full;
             max_nsamples_em,
+            min_eigval,
         )
 
         if iter > 0
@@ -118,6 +120,7 @@ function em_step!(
     𝔼x_full::AbstractVector,
     nsamples_full::Integer;
     max_nsamples_em::Union{Integer, Nothing} = nothing,
+    min_eigval::Union{Number, Nothing} = nothing,
 )
     # E step, update 𝔼x and 𝔼xxᵀ
     copy!(μ, 𝔼x_full)
@@ -199,6 +202,25 @@ function em_step!(
     mul!(Σ, μ₀, μ', -1, 1)
     mul!(Σ, μ, μ', -1, 1)
     μ .+= μ₀
+
+    if !isnothing(min_eigval)
+        # make all eigvals no less than min_eigval
+        Σ_eigen = eigen(Σ)
+        Σ_eigmin = minimum(Σ_eigen.values)
+        if Σ_eigmin < min_eigval
+            clamped_Σ_eigvals = max.(Σ_eigen.values, min_eigval)
+            mul!(parent(Σ), Σ_eigen.vectors, Diagonal(clamped_Σ_eigvals) * Σ_eigen.vectors')
+            StatsBase._symmetrize!(parent(Σ))
+            if verbose
+                n_below_min = sum(<(min_eigval), mtx_eig.values)
+                Δnorm = sqrt(sum(abs2, Σ_eigen.values - clamped_Σ_eigvals))
+                @info "eigmin(Σ) = $Σ_eigmin, N(eigvals < $min_eigval) = $n_below_min, Δ(Σ, clamped(Σ)) = $Δnorm"
+            end
+        else
+            verbose &&
+                @info "eigmin(Σ) = $Σ_eigmin, N(eigvals < $min_eigval) = 0, Δ(Σ, clamped(Σ)) = 0"
+        end
+    end
 
     # ridge Σ
     # while !isposdef(Σ)
