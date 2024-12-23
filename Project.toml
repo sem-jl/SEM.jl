@@ -48,7 +48,9 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 test = ["Test"]
 
 [weakdeps]
+BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
 ProximalAlgorithms = "140ffc9f-1907-541a-a177-7475e0a401e9"
 ProximalCore = "dc4f5ac2-75d1-4f31-931e-60435d74994b"
 ProximalOperators = "a725b495-10eb-56fe-b38b-717eba820537"
@@ -56,3 +58,4 @@ ProximalOperators = "a725b495-10eb-56fe-b38b-717eba820537"
 [extensions]
 SEMNLOptExt = "NLopt"
 SEMProximalOptExt = ["ProximalCore", "ProximalAlgorithms", "ProximalOperators"]
+SEMBlackBoxOptimExt = ["BlackBoxOptim", "Optimisers"]
