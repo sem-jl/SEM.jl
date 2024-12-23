@@ -2,7 +2,7 @@
 
 ## Setup
 
-For ridge regularization, you can simply use `SemRidge` as an additional loss function 
+For ridge regularization, you can simply use `SemRidge` as an additional loss function
 (for example, a model with the loss functions `SemML` and `SemRidge` corresponds to ridge-regularized maximum likelihood estimation).
 
 For lasso, elastic net and (far) beyond, we provide the `ProximalSEM` package. You can install it and load it alongside `StructuralEquationModels`:
@@ -39,7 +39,7 @@ using ProximalOperators
 ## `SemOptimizerProximal`
 
 `ProximalSEM` provides a new "building block" for the optimizer part of a model, called `SemOptimizerProximal`.
-It connects our package to the [`ProximalAlgorithms.jl`](https://github.com/JuliaFirstOrder/ProximalAlgorithms.jl) optimization backend, providing so-called proximal optimization algorithms. 
+It connects our package to the [`ProximalAlgorithms.jl`](https://github.com/JuliaFirstOrder/ProximalAlgorithms.jl) optimization backend, providing so-called proximal optimization algorithms.
 Those can handle, amongst other things, various forms of regularization.
 
 It can be used as
@@ -87,7 +87,7 @@ end
 
 partable = ParameterTable(
     graph,
-    latent_vars = latent_vars, 
+    latent_vars = latent_vars,
     observed_vars = observed_vars
 )
 

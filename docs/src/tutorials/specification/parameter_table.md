@@ -5,5 +5,5 @@ As lavaan also uses parameter tables to store model specifications, we are worki
 
 ## Convert from and to RAMMatrices
 
-To convert a RAMMatrices object to a ParameterTable, simply use `partable = ParameterTable(rammatrices)`. 
+To convert a RAMMatrices object to a ParameterTable, simply use `partable = ParameterTable(rammatrices)`.
 To convert an object of type `ParameterTable` to RAMMatrices, you can use `ram_matrices = RAMMatrices(partable)`.

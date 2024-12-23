@@ -1,6 +1,6 @@
 # Graph interface
 
-## Workflow 
+## Workflow
 As discussed before, when using the graph interface, you can specify your model as a graph
 
 ```julia
@@ -17,7 +17,7 @@ latent_vars   = ...
 
 partable = ParameterTable(
     graph,
-    latent_vars = latent_vars, 
+    latent_vars = latent_vars,
     observed_vars = observed_vars)
 
 model = Sem(
@@ -32,7 +32,7 @@ In general, there are two different types of parameters: **directed** and **indi
 We allow multiple variables on both sides of an arrow, for example `x → [y z]` or `[a b] → [c d]`. The later specifies element wise edges; that is its the same as `a → c; b → d`. If you want edges corresponding to the cross-product, we have the double lined arrow `[a b] ⇒ [c d]`, corresponding to `a → c; a → d; b → c; b → d`. The undirected arrows ↔ (element-wise) and ⇔ (crossproduct) behave the same way.
 
 !!! note "Unicode symbols in julia"
-    The `→` symbol is a unicode symbol allowed in julia (among many others; see this [list](https://docs.julialang.org/en/v1/manual/unicode-input/)). You can enter it in the julia REPL or the vscode IDE by typing `\to` followed by hitting `tab`. Similarly, 
+    The `→` symbol is a unicode symbol allowed in julia (among many others; see this [list](https://docs.julialang.org/en/v1/manual/unicode-input/)). You can enter it in the julia REPL or the vscode IDE by typing `\to` followed by hitting `tab`. Similarly,
     - `←` = `\leftarrow`,
     - `↔` = `\leftrightarrow`,
     - `⇒` = `\Rightarrow`,
@@ -54,7 +54,7 @@ graph = @StenoGraph begin
     ξ₃ ↔ fixed(1.0)*ξ₃
 end
 ```
-would 
+would
 - fix the directed effects from `ξ₁` to `x1` and from `ξ₂` to `x2` to `1`
 - leave the directed effect from `ξ₃` to `x7` free but instead restrict the variance of `ξ₃` to `1`
 - give the effect from `ξ₁` to `x3` the label `:a` (which can be convenient later if you want to retrieve information from your model about that specific parameter)
@@ -66,7 +66,7 @@ As you saw above and in the [A first model](@ref) example, the graph object need
 ```julia
 partable = ParameterTable(
     graph,
-    latent_vars = latent_vars, 
+    latent_vars = latent_vars,
     observed_vars = observed_vars)
 ```
 
@@ -85,7 +85,7 @@ The variable names (`:x1`) have to be symbols, the syntax `:something` creates a
     _(latent_vars) ⇔ _(latent_vars)
 end
 ```
-creates undirected effects coresponding to 
+creates undirected effects coresponding to
 1. the variances of all observed variables and
 2. the variances plus covariances of all latent variables
 So if you want to work with a subset of variables, simply specify a vector of symbols `somevars = [...]`, and inside the graph specification, refer to them as `_(somevars)`.

@@ -49,8 +49,8 @@ Available loss functions are
 - [`SemRidge`](@ref): ridge regularization
 
 ## The optimizer part aka `SemOptimizer`
-The optimizer part of a model connects to the numerical optimization backend used to fit the model. 
-It can be used to control options like the optimization algorithm, linesearch, stopping criteria, etc. 
+The optimizer part of a model connects to the numerical optimization backend used to fit the model.
+It can be used to control options like the optimization algorithm, linesearch, stopping criteria, etc.
 There are currently two available backends, [`SemOptimizerOptim`](@ref) connecting to the [Optim.jl](https://github.com/JuliaNLSolvers/Optim.jl) backend, and [`SemOptimizerNLopt`](@ref) connecting to the [NLopt.jl](https://github.com/JuliaOpt/NLopt.jl) backend.
 For more information about the available options see also the tutorials about [Using Optim.jl](@ref) and [Using NLopt.jl](@ref), as well as [Constrained optimization](@ref).
 

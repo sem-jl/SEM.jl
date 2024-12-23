@@ -7,19 +7,19 @@ model_fit = sem_fit(model)
 
 # output
 
-Fitted Structural Equation Model 
-=============================================== 
---------------------- Model ------------------- 
+Fitted Structural Equation Model
+===============================================
+--------------------- Model -------------------
 
-Structural Equation Model 
-- Loss Functions 
+Structural Equation Model
+- Loss Functions
    SemML
-- Fields 
-   observed:  SemObservedData 
-   implied:   RAM 
-   optimizer: SemOptimizerOptim 
+- Fields
+   observed:  SemObservedData
+   implied:   RAM
+   optimizer: SemOptimizerOptim
 
-------------- Optimization result ------------- 
+------------- Optimization result -------------
 
  * Status: success
 
