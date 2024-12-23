@@ -16,7 +16,7 @@ Structural Equation Model
    SemML
 - Fields 
    observed:  SemObservedData 
-   imply:     RAM 
+   implied:   RAM 
    optimizer: SemOptimizerOptim 
 
 ------------- Optimization result ------------- 

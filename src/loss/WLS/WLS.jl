@@ -9,7 +9,7 @@ Weighted least squares estimation.
 # Constructor
 
     SemWLS(;
-        observed, imply,
+        observed, implied,
         wls_weight_matrix = nothing,
         wls_weight_matrix_mean = nothing,
         approximate_hessian = false,
@@ -17,7 +17,7 @@ Weighted least squares estimation.
 
 # Arguments
 - `observed`: the `SemObserved` part of the model
-- `imply::SemImply`: the implied part of the model
+- `implied::SemImplied`: the implied part of the model
 - `approximate_hessian::Bool`: should the hessian be swapped for an approximation
 - `wls_weight_matrix`: the weight matrix for weighted least squares.
     Defaults to GLS estimation (``0.5*(D^T*kron(S,S)*D)`` where D is the duplication matrix
@@ -27,7 +27,7 @@ Weighted least squares estimation.
 
 # Examples
 ```julia
-my_wls = SemWLS(observed = my_observed, imply = my_implied)
+my_wls = SemWLS(observed = my_observed, implied = my_implied)
 ```
 
 # Interfaces
@@ -53,7 +53,7 @@ SemWLS{HE}(args...) where {HE <: HessianEval} =
 
 function SemWLS(;
     observed::SemObserved,
-    imply::SemImply,
+    implied::SemImplied,
     wls_weight_matrix::Union{AbstractMatrix, Nothing} = nothing,
     wls_weight_matrix_mean::Union{AbstractMatrix, Nothing} = nothing,
     approximate_hessian::Bool = false,
@@ -61,10 +61,10 @@ function SemWLS(;
 )
     nobs_vars = nobserved_vars(observed)
     s = vech(obs_cov(observed))
-    size(s) == size(imply.Σ) ||
+    size(s) == size(implied.Σ) ||
         throw(DimensionMismatch("SemWLS requires implied covariance to be in vech-ed form " *
-                                "(vectorized lower triangular part of Σ matrix): $(size(s)) expected, $(size(imply.Σ)) found.\n" *
-                                "$(nameof(typeof(imply))) must be constructed with vech=true."))
+                                "(vectorized lower triangular part of Σ matrix): $(size(s)) expected, $(size(implied.Σ)) found.\n" *
+                                "$(nameof(typeof(implied))) must be constructed with vech=true."))
 
     # compute V here
     if isnothing(wls_weight_matrix)
@@ -81,7 +81,7 @@ function SemWLS(;
     size(wls_weight_matrix) == (length(s), length(s)) ||
         DimensionMismatch("wls_weight_matrix has to be of size $(length(s))×$(length(s))")
 
-    if MeanStruct(imply) == HasMeanStruct
+    if MeanStruct(implied) == HasMeanStruct
         if isnothing(wls_weight_matrix_mean)
         	@warn "Computing WLS weight matrix for the meanstructure using obs_cov()"
             wls_weight_matrix_mean = inv(obs_cov(observed))
@@ -109,7 +109,7 @@ function evaluate!(
     gradient,
     hessian,
     semwls::SemWLS,
-    implied::SemImplySymbolic,
+    implied::SemImpliedSymbolic,
     model::AbstractSemSingle,
     par,
 )

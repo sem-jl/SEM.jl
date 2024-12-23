@@ -25,7 +25,7 @@ function print_type(io::IO, struct_instance)
 end
 
 ##############################################################
-# Loss Functions, Imply, 
+# Loss Functions, Implied,
 ##############################################################
 
 function Base.show(io::IO, struct_inst::SemLossFunction)
@@ -33,7 +33,7 @@ function Base.show(io::IO, struct_inst::SemLossFunction)
     print_field_types(io, struct_inst)
 end
 
-function Base.show(io::IO, struct_inst::SemImply)
+function Base.show(io::IO, struct_inst::SemImplied)
     print_type_name(io, struct_inst)
     print_field_types(io, struct_inst)
 end

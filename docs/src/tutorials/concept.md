@@ -4,9 +4,9 @@ In our package, every Structural Equation Model (`Sem`) consists of four parts:
 
 ![SEM concept](../assets/concept.svg)
 
-Those parts are interchangable building blocks (like 'Legos'), i.e. there are different pieces available you can choose as the 'observed' slot of the model, and stick them together with other pieces that can serve as the 'imply' part.
+Those parts are interchangable building blocks (like 'Legos'), i.e. there are different pieces available you can choose as the `observed` slot of the model, and stick them together with other pieces that can serve as the `implied` part.
 
-The 'observed' part is for observed data, the imply part is what the model implies about your data (e.g. the model implied covariance matrix), the loss part compares the observed data and implied properties (e.g. weighted least squares difference between the observed and implied covariance matrix) and the optimizer part connects to the optimization backend (e.g. the type of optimization algorithm used).
+The `observed` part is for observed data, the `implied` part is what the model implies about your data (e.g. the model implied covariance matrix), the loss part compares the observed data and implied properties (e.g. weighted least squares difference between the observed and implied covariance matrix) and the optimizer part connects to the optimization backend (e.g. the type of optimization algorithm used).
 
 For example, to build a model for maximum likelihood estimation with the NLopt optimization suite as a backend you would choose `SemML` as a loss function and `SemOptimizerNLopt` as the optimizer.
 
@@ -20,24 +20,24 @@ So everything that can be used as the 'observed' part has to be of type `SemObse
 
 Here is an overview on the available building blocks:
 
-|[`SemObserved`](@ref)            | [`SemImply`](@ref)    | [`SemLossFunction`](@ref) | [`SemOptimizer`](@ref)        |
+|[`SemObserved`](@ref)            | [`SemImplied`](@ref)  | [`SemLossFunction`](@ref) | [`SemOptimizer`](@ref)        |
 |---------------------------------|-----------------------|---------------------------|-------------------------------|
 | [`SemObservedData`](@ref)       | [`RAM`](@ref)         | [`SemML`](@ref)           | [`SemOptimizerOptim`](@ref)   |
 | [`SemObservedCovariance`](@ref) | [`RAMSymbolic`](@ref) | [`SemWLS`](@ref)          | [`SemOptimizerNLopt`](@ref)   |
-| [`SemObservedMissing`](@ref)    | [`ImplyEmpty`](@ref)  | [`SemFIML`](@ref)         |                               |
-|                                 |                       | [`SemRidge`](@ref)        |                               |   
-|                                 |                       | [`SemConstant`](@ref)     |                               |   
+| [`SemObservedMissing`](@ref)    | [`ImpliedEmpty`](@ref)| [`SemFIML`](@ref)         |                               |
+|                                 |                       | [`SemRidge`](@ref)        |                               |
+|                                 |                       | [`SemConstant`](@ref)     |                               |
 
 The rest of this page explains the building blocks for each part. First, we explain every part and give an overview on the different options that are available. After that, the [API - model parts](@ref) section serves as a reference for detailed explanations about the different options.
 (How to stick them together to a final model is explained in the section on [Model Construction](@ref).)
 
 ## The observed part aka [`SemObserved`](@ref)
 
-The 'observed' part contains all necessary information about the observed data. Currently, we have three options: [`SemObservedData`](@ref) for fully observed datasets, [`SemObservedCovariance`](@ref) for observed covariances (and means) and [`SemObservedMissing`](@ref) for data that contains missing values.
+The *observed* part contains all necessary information about the observed data. Currently, we have three options: [`SemObservedData`](@ref) for fully observed datasets, [`SemObservedCovariance`](@ref) for observed covariances (and means) and [`SemObservedMissing`](@ref) for data that contains missing values.
 
-## The imply part aka [`SemImply`](@ref)
-The imply part is what your model implies about the data, for example, the model-implied covariance matrix. 
-There are two options at the moment: [`RAM`](@ref), which uses the reticular action model to compute the model implied covariance matrix, and [`RAMSymbolic`](@ref) which does the same but symbolically pre-computes part of the model, which increases subsequent performance in model fitting (see [Symbolic precomputation](@ref)). There is also a third option, [`ImplyEmpty`](@ref) that can serve as a 'placeholder' for models that do not need an imply part.
+## The implied part aka [`SemImplied`](@ref)
+The *implied* part is what your model implies about the data, for example, the model-implied covariance matrix.
+There are two options at the moment: [`RAM`](@ref), which uses the reticular action model to compute the model implied covariance matrix, and [`RAMSymbolic`](@ref) which does the same but symbolically pre-computes part of the model, which increases subsequent performance in model fitting (see [Symbolic precomputation](@ref)). There is also a third option, [`ImpliedEmpty`](@ref) that can serve as a 'placeholder' for models that do not need an implied part.
 
 ## The loss part aka `SemLoss`
 The loss part specifies the objective that is optimized to find the parameter estimates.
@@ -73,13 +73,13 @@ SemObservedCovariance
 SemObservedMissing
 ```
 
-## imply
+## implied
 
 ```@docs
-SemImply
+SemImplied
 RAM
 RAMSymbolic
-ImplyEmpty
+ImpliedEmpty
 ```
 
 ## loss functions

@@ -44,7 +44,7 @@ function latent_scores_operator(
     model::AbstractSemSingle,
     params::AbstractVector,
 )
-    implied = model.imply
+    implied = model.implied
     ram = implied.ram_matrices
     lv_inds = latent_var_indices(ram)
 
@@ -65,7 +65,7 @@ function latent_scores_operator(
     model::AbstractSemSingle,
     params::AbstractVector,
 )
-    implied = model.imply
+    implied = model.implied
     ram = implied.ram_matrices
     lv_inds = latent_var_indices(ram)
     A = materialize(ram.A, params)
@@ -95,10 +95,10 @@ function predict_latent_scores(
         ),
     )
 
-    implied = model.imply
+    implied = model.implied
     hasmeanstruct = MeanStructure(implied) === HasMeanStructure
 
-    update!(EvaluationTargets(0.0, nothing, nothing), model.imply, model, params)
+    update!(EvaluationTargets(0.0, nothing, nothing), model.implied, model, params)
     ram = implied.ram_matrices
     lv_inds = latent_var_indices(ram)
     A = materialize(ram.A, params)

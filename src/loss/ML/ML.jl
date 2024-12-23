@@ -8,16 +8,16 @@ Maximum likelihood estimation.
 
 # Constructor
 
-    SemML(; observed, imply, approximate_hessian = false, kwargs...)
+    SemML(; observed, implied, approximate_hessian = false, kwargs...)
 
 # Arguments
 - `observed::SemObserved`: the observed part of the model
-- `imply::SemImply`: the implied part of the model
+- `implied::SemImplied`: the implied part of the model
 - `approximate_hessian::Bool`: if hessian-based optimization is used, should the hessian be swapped for an approximation
 
 # Examples
 ```julia
-my_ml = SemML(observed = my_observed, imply = my_implied)
+my_ml = SemML(observed = my_observed, implied = my_implied)
 ```
 
 # Interfaces
@@ -46,14 +46,14 @@ end
 
 function SemML(;
     observed::SemObserved,
-    imply::SemImply,
+    implied::SemImplied,
     approximate_hessian::Bool = false,
     kwargs...,
 )
     he = approximate_hessian ? ApproxHessian() : ExactHessian()
     obsXobs = parent(obs_cov(observed))
     nobs = nobserved_vars(observed)
-    nvar = nvars(imply)
+    nvar = nvars(implied)
 
     return SemML{typeof(he), typeof(obsXobs)}(
         he,
@@ -72,14 +72,14 @@ end
 ############################################################################################
 
 ############################################################################################
-### Symbolic Imply Types
+### Symbolic Implied Types
 
 function evaluate!(
     objective,
     gradient,
     hessian,
     semml::SemML,
-    implied::SemImplySymbolic,
+    implied::SemImpliedSymbolic,
     model::AbstractSemSingle,
     par,
 )
@@ -146,7 +146,7 @@ function evaluate!(
 end
 
 ############################################################################################
-### Non-Symbolic Imply Types
+### Non-Symbolic Implied Types
 
 function evaluate!(
     objective,
@@ -158,7 +158,7 @@ function evaluate!(
     par,
 )
     if !isnothing(hessian)
-        error("hessian of ML + non-symbolic imply type is not available")
+        error("hessian of ML + non-symbolic implied type is not available")
     end
 
     Σ = implied.Σ

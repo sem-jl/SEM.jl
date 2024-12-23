@@ -1,15 +1,15 @@
 
-# vars and params API methods for SemImply
-vars(imply::SemImply) = vars(imply.ram_matrices)
-observed_vars(imply::SemImply) = observed_vars(imply.ram_matrices)
-latent_vars(imply::SemImply) = latent_vars(imply.ram_matrices)
+# vars and params API methods for SemImplied
+vars(implied::SemImplied) = vars(implied.ram_matrices)
+observed_vars(implied::SemImplied) = observed_vars(implied.ram_matrices)
+latent_vars(implied::SemImplied) = latent_vars(implied.ram_matrices)
 
-nvars(imply::SemImply) = nvars(imply.ram_matrices)
-nobserved_vars(imply::SemImply) = nobserved_vars(imply.ram_matrices)
-nlatent_vars(imply::SemImply) = nlatent_vars(imply.ram_matrices)
+nvars(implied::SemImplied) = nvars(implied.ram_matrices)
+nobserved_vars(implied::SemImplied) = nobserved_vars(implied.ram_matrices)
+nlatent_vars(implied::SemImplied) = nlatent_vars(implied.ram_matrices)
 
-params(imply::SemImply) = params(imply.ram_matrices)
-nparams(imply::SemImply) = nparams(imply.ram_matrices)
+params(implied::SemImplied) = params(implied.ram_matrices)
+nparams(implied::SemImplied) = nparams(implied.ram_matrices)
 
 # checks if the A matrix is acyclic
 # wraps A in LowerTriangular/UpperTriangular if it is triangular

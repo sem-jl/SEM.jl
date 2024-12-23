@@ -110,7 +110,7 @@ function prepare_param_bounds(
     default::Number,
     variance_default::Number,
 ) where {BOUND}
-    varparams = Set(variance_params(model.imply.ram_matrices))
+    varparams = Set(variance_params(model.implied.ram_matrices))
     res = [
         begin
             def = in(p, varparams) ? variance_default : default

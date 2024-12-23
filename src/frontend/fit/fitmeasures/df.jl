@@ -13,7 +13,7 @@ df(model::AbstractSem) = n_dp(model) - nparams(model)
 function n_dp(model::AbstractSemSingle)
     nvars = nobserved_vars(model)
     ndp = 0.5(nvars^2 + nvars)
-    if !isnothing(model.imply.μ)
+    if !isnothing(model.implied.μ)
         ndp += nvars
     end
     return ndp

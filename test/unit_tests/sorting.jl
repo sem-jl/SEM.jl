@@ -7,7 +7,7 @@ sort_vars!(partable)
 model_ml_sorted = Sem(specification = partable, data = dat)
 
 @testset "graph sorting" begin
-    @test model_ml_sorted.imply.I_A isa LowerTriangular
+    @test model_ml_sorted.implied.I_A isa LowerTriangular
 end
 
 @testset "ml_solution_sorted" begin

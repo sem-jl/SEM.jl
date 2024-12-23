@@ -1,6 +1,6 @@
 # Build by parts
 
-You can always build a model by parts - that is, you construct the observed, imply, loss and optimizer part seperately.
+You can always build a model by parts - that is, you construct the observed, implied, loss and optimizer part seperately.
 
 As an example on how this works, we will build [A first model](@ref) in parts.
 
@@ -50,8 +50,8 @@ Now, we construct the different parts:
 # observed ---------------------------------------------------------------------------------
 observed = SemObservedData(specification = partable, data = data)
 
-# imply ------------------------------------------------------------------------------------
-imply_ram = RAM(specification = partable)
+# implied ------------------------------------------------------------------------------------
+implied_ram = RAM(specification = partable)
 
 # loss -------------------------------------------------------------------------------------
 ml = SemML(observed = observed)
@@ -63,5 +63,5 @@ optimizer = SemOptimizerOptim()
 
 # model ------------------------------------------------------------------------------------
 
-model_ml = Sem(observed, imply_ram, loss_ml, optimizer)
+model_ml = Sem(observed, implied_ram, loss_ml, optimizer)
 ```

@@ -18,7 +18,7 @@ Model implied covariance and means via RAM notation.
 # Extended help
 
 ## Implementation
-Subtype of `SemImply`.
+Subtype of `SemImplied`.
 
 ## RAM notation
 
@@ -62,7 +62,7 @@ Additional interfaces
 Only available in gradient! calls:
 - `I_A⁻¹(::RAM)` -> ``(I-A)^{-1}``
 """
-mutable struct RAM{MS, A1, A2, A3, A4, A5, A6, V2, M1, M2, M3, M4, S1, S2, S3} <: SemImply
+mutable struct RAM{MS, A1, A2, A3, A4, A5, A6, V2, M1, M2, M3, M4, S1, S2, S3} <: SemImplied
     meanstruct::MS
     hessianeval::ExactHessian
 
@@ -163,29 +163,29 @@ end
 ### methods
 ############################################################################################
 
-function update!(targets::EvaluationTargets, imply::RAM, model::AbstractSemSingle, params)
-    materialize!(imply.A, imply.ram_matrices.A, params)
-    materialize!(imply.S, imply.ram_matrices.S, params)
-    if !isnothing(imply.M)
-        materialize!(imply.M, imply.ram_matrices.M, params)
+function update!(targets::EvaluationTargets, implied::RAM, model::AbstractSemSingle, params)
+    materialize!(implied.A, implied.ram_matrices.A, params)
+    materialize!(implied.S, implied.ram_matrices.S, params)
+    if !isnothing(implied.M)
+        materialize!(implied.M, implied.ram_matrices.M, params)
     end
 
-    @. imply.I_A = -imply.A
-    @view(imply.I_A[diagind(imply.I_A)]) .+= 1
+    parent(implied.I_A) .= .-implied.A
+    @view(implied.I_A[diagind(implied.I_A)]) .+= 1
 
     if is_gradient_required(targets) || is_hessian_required(targets)
-        imply.I_A⁻¹ = LinearAlgebra.inv!(factorize(imply.I_A))
-        mul!(imply.F⨉I_A⁻¹, imply.F, imply.I_A⁻¹)
+        implied.I_A⁻¹ = LinearAlgebra.inv!(factorize(implied.I_A))
+        mul!(implied.F⨉I_A⁻¹, implied.F, implied.I_A⁻¹)
     else
-        copyto!(imply.F⨉I_A⁻¹, imply.F)
-        rdiv!(imply.F⨉I_A⁻¹, factorize(imply.I_A))
+        copyto!(implied.F⨉I_A⁻¹, implied.F)
+        rdiv!(implied.F⨉I_A⁻¹, factorize(implied.I_A))
     end
 
-    mul!(imply.F⨉I_A⁻¹S, imply.F⨉I_A⁻¹, imply.S)
-    mul!(imply.Σ, imply.F⨉I_A⁻¹S, imply.F⨉I_A⁻¹')
+    mul!(implied.F⨉I_A⁻¹S, implied.F⨉I_A⁻¹, implied.S)
+    mul!(parent(implied.Σ), implied.F⨉I_A⁻¹S, implied.F⨉I_A⁻¹')
 
-    if MeanStruct(imply) === HasMeanStruct
-        mul!(imply.μ, imply.F⨉I_A⁻¹, imply.M)
+    if MeanStruct(implied) === HasMeanStruct
+        mul!(implied.μ, implied.F⨉I_A⁻¹, implied.M)
     end
 end
 
@@ -193,9 +193,9 @@ end
 ### Recommended methods
 ############################################################################################
 
-function update_observed(imply::RAM, observed::SemObserved; kwargs...)
-    if nobserved_vars(observed) == size(imply.Σ, 1)
-        return imply
+function update_observed(implied::RAM, observed::SemObserved; kwargs...)
+    if nobserved_vars(observed) == size(implied.Σ, 1)
+        return implied
     else
         return RAM(; observed = observed, kwargs...)
     end
