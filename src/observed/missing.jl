@@ -2,17 +2,6 @@
 ### Types
 ############################################################################################
 
-# Type to store Expectation Maximization result --------------------------------------------
-mutable struct EmMVNModel{A, b, B}
-    Σ::A
-    μ::b
-    fitted::B
-end
-
-# FIXME type unstable
-obs_mean(em::EmMVNModel) = ifelse(em.fitted, em.μ, nothing)
-obs_cov(em::EmMVNModel) = ifelse(em.fitted, em.Σ, nothing)
-
 """
 For observed data with missing values.
 

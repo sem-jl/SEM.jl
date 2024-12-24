@@ -8,6 +8,13 @@
 # found at https://github.com/probml/pmtk3/blob/master/toolbox/BasicModels/gauss/sub/gaussMissingFitEm.m
 # and at https://github.com/probml/pmtk3/blob/master/toolbox/Algorithms/optimization/emAlgo.m
 
+# Type to store Expectation Maximization result --------------------------------------------
+mutable struct EmMVNModel{A, b, B}
+    Σ::A
+    μ::b
+    fitted::B
+end
+
 # what about random restarts?
 
 # outer function ---------------------------------------------------------------------------
