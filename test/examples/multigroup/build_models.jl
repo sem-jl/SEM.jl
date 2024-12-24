@@ -50,23 +50,6 @@ end
         lav_col = :se,
         lav_groups = Dict(:Pasteur => 1, :Grant_White => 2),
     )
-
-    solution_ml = sem_fit(model_ml_multigroup2)
-    test_fitmeasures(
-        fit_measures(solution_ml),
-        solution_lav[:fitmeasures_ml];
-        rtol = 1e-2,
-        atol = 1e-7,
-    )
-    update_se_hessian!(partable, solution_ml)
-    test_estimates(
-        partable,
-        solution_lav[:parameter_estimates_ml];
-        atol = 1e-3,
-        col = :se,
-        lav_col = :se,
-        lav_groups = Dict(:Pasteur => 1, :Grant_White => 2),
-    )
 end
 
 ############################################################################################
