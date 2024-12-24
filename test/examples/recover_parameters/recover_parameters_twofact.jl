@@ -55,7 +55,7 @@ start = [
 
 imply_ml = RAMSymbolic(; specification = ram_matrices, start_val = start)
 
-imply_ml.Σ_function(imply_ml.Σ, true_val)
+imply_ml.Σ_eval!(imply_ml.Σ, true_val)
 
 true_dist = MultivariateNormal(imply_ml.Σ)
 

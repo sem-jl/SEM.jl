@@ -135,10 +135,9 @@ function evaluate!(
     end
     isnothing(hessian) || (mul!(hessian, ∇σ' * V, ∇σ, 2, 0))
     if !isnothing(hessian) && (HessianEval(semwls) === ExactHessian)
-        ∇²Σ_function! = implied.∇²Σ_function
         ∇²Σ = implied.∇²Σ
         J = -2 * (σ₋' * semwls.V)'
-        ∇²Σ_function!(∇²Σ, J, par)
+        implied.∇²Σ_eval!(∇²Σ, J, par)
         hessian .+= ∇²Σ
     end
     if MeanStruct(implied) === HasMeanStruct
