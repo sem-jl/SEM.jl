@@ -10,7 +10,7 @@ Connects to `ProximalAlgorithms.jl` as the optimization backend.
         algorithm = ProximalAlgorithms.PANOC(),
         operator_g,
         operator_h = nothing,
-        kwargs...,
+        kwargs...)
 
 # Arguments
 - `algorithm`: optimization algorithm.
