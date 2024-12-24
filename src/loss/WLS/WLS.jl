@@ -61,8 +61,7 @@ function SemWLS(;
     kwargs...,
 )
     nobs_vars = nobserved_vars(observed)
-    tril_ind = filter(x -> (x[1] >= x[2]), CartesianIndices(obs_cov(observed)))
-    s = obs_cov(observed)[tril_ind]
+    s = vech(obs_cov(observed))
 
     # compute V here
     if isnothing(wls_weight_matrix)

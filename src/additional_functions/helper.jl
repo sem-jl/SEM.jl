@@ -124,6 +124,39 @@ function elimination_matrix(n::Integer)
     return L
 end
 
+# vector of lower-triangular values of a square matrix
+function vech(A::AbstractMatrix{T}) where {T}
+    size(A, 1) == size(A, 2) ||
+        throw(ArgumentError("Matrix must be square, $(size(A)) given"))
+    n = size(A, 1)
+    v = Vector{T}(undef, (n * (n + 1)) >> 1)
+    k = 0
+    for (j, Aj) in enumerate(eachcol(A)), i in j:n
+        @inbounds v[k+=1] = Aj[i]
+    end
+    @assert k == length(v)
+    return v
+end
+
+# vector of lower-triangular linear indices of a nXn square matrix
+function vechinds(n::Integer)
+    A_lininds = LinearIndices((n, n))
+    v = Vector{Int}(undef, (n * (n + 1)) >> 1)
+    k = 0
+    for j in 1:n, i in j:n
+        @inbounds v[k+=1] = A_lininds[i, j]
+    end
+    @assert k == length(v)
+    return v
+end
+
+# vector of lower-triangular linear indices of a square matrix
+function vechinds(A::AbstractMatrix)
+    size(A, 1) == size(A, 2) ||
+        throw(ArgumentError("Matrix must be square, $(size(A)) given"))
+    return vechinds(size(A, 1))
+end
+
 # returns the vector of non-unique values in the order of appearance
 # each non-unique values is reported once
 function nonunique(values::AbstractVector)
