@@ -7,12 +7,17 @@ Not available for ensemble models.
 function start_fabin3 end
 
 # splice model and loss functions
-function start_fabin3(model::AbstractSemSingle; kwargs...)
-    return start_fabin3(model.observed, model.implied, model.loss.functions..., kwargs...)
+function start_fabin3(model::SemLoss; kwargs...)
+    return start_fabin3(model.observed, model.implied; kwargs...)
 end
 
-function start_fabin3(observed::SemObserved, implied, args...; kwargs...)
-    return start_fabin3(implied.ram_matrices, obs_cov(observed), obs_mean(observed))
+function start_fabin3(observed::SemObserved, implied::SemImplied; kwargs...)
+    return start_fabin3(
+        implied.ram_matrices,
+        obs_cov(observed),
+        # ignore observed means if no meansturcture
+        !isnothing(implied.ram_matrices.M) ? obs_mean(observed) : nothing,
+    )
 end
 
 function start_fabin3(
@@ -180,3 +185,6 @@ end
 function is_in_Λ(ind_vec, F_ind)
     return any(ind -> !(ind[2] ∈ F_ind) && (ind[1] ∈ F_ind), ind_vec)
 end
+
+# ensembles
+start_fabin3(model::AbstractSem; kwargs...) = start_values(start_fabin3, model; kwargs...)

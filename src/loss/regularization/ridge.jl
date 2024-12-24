@@ -29,7 +29,7 @@ Analytic gradients and hessians are available.
 ## Implementation
 Subtype of `SemLossFunction`.
 """
-struct SemRidge{P, W1, W2, GT, HT} <: SemLossFunction
+struct SemRidge{P, W1, W2, GT, HT} <: AbstractLoss
     hessianeval::ExactHessian
     α::P
     which::W1
@@ -78,15 +78,14 @@ end
 ### methods
 ############################################################################################
 
-objective(ridge::SemRidge, model::AbstractSem, par) =
-    @views ridge.α * sum(abs2, par[ridge.which])
+objective(ridge::SemRidge, par) = @views ridge.α * sum(abs2, par[ridge.which])
 
-function gradient(ridge::SemRidge, model::AbstractSem, par)
+function gradient(ridge::SemRidge, par)
     @views ridge.gradient[ridge.which] .= (2 * ridge.α) * par[ridge.which]
     return ridge.gradient
 end
 
-function hessian(ridge::SemRidge, model::AbstractSem, par)
+function hessian(ridge::SemRidge, par)
     @views @. ridge.hessian[ridge.which_H] .= 2 * ridge.α
     return ridge.hessian
 end

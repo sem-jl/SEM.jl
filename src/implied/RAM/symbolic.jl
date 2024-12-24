@@ -178,12 +178,7 @@ end
 ### objective, gradient, hessian
 ############################################################################################
 
-function update!(
-    targets::EvaluationTargets,
-    implied::RAMSymbolic,
-    model::AbstractSemSingle,
-    par,
-)
+function update!(targets::EvaluationTargets, implied::RAMSymbolic, par)
     implied.Σ_eval!(implied.Σ, par)
     if MeanStruct(implied) === HasMeanStruct
         implied.μ_eval!(implied.μ, par)

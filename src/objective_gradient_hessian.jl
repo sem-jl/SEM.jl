@@ -23,34 +23,30 @@ is_hessian_required(::EvaluationTargets{<:Any, <:Any, H}) where {H} = H
 
 (targets::EvaluationTargets)(arg_tuple::Tuple) = targets(arg_tuple...)
 
-# dispatch on SemImplied
-evaluate!(objective, gradient, hessian, loss::SemLossFunction, model::AbstractSem, params) =
-    evaluate!(objective, gradient, hessian, loss, implied(model), model, params)
-
 # fallback method
-function evaluate!(obj, grad, hess, loss::SemLossFunction, implied::SemImplied, model, params)
-    isnothing(obj) || (obj = objective(loss, implied, model, params))
-    isnothing(grad) || copyto!(grad, gradient(loss, implied, model, params))
-    isnothing(hess) || copyto!(hess, hessian(loss, implied, model, params))
+function evaluate!(obj, grad, hess, loss::AbstractLoss, params)
+    isnothing(obj) || (obj = objective(loss, params))
+    isnothing(grad) || copyto!(grad, gradient(loss, params))
+    isnothing(hess) || copyto!(hess, hessian(loss, params))
     return obj
 end
 
-# fallback methods
-objective(f::SemLossFunction, implied::SemImplied, model, params) = objective(f, model, params)
-gradient(f::SemLossFunction, implied::SemImplied, model, params) = gradient(f, model, params)
-hessian(f::SemLossFunction, implied::SemImplied, model, params) = hessian(f, model, params)
+evaluate!(obj, grad, hess, term::LossTerm, params) =
+    evaluate!(obj, grad, hess, loss(term), params)
 
 # fallback method for SemImplied that calls update_xxx!() methods
-function update!(targets::EvaluationTargets, implied::SemImplied, model, params)
-    is_objective_required(targets) && update_objective!(implied, model, params)
-    is_gradient_required(targets) && update_gradient!(implied, model, params)
-    is_hessian_required(targets) && update_hessian!(implied, model, params)
+function update!(targets::EvaluationTargets, implied::SemImplied, params)
+    is_objective_required(targets) && update_objective!(implied, params)
+    is_gradient_required(targets) && update_gradient!(implied, params)
+    is_hessian_required(targets) && update_hessian!(implied, params)
 end
 
+const AbstractSemOrLoss = Union{AbstractSem, AbstractLoss}
+
 # guess objective type
-objective_type(model::AbstractSem, params::Any) = Float64
-objective_type(model::AbstractSem, params::AbstractVector{T}) where {T <: Number} = T
-objective_zero(model::AbstractSem, params::Any) = zero(objective_type(model, params))
+objective_type(model::AbstractSemOrLoss, params::Any) = Float64
+objective_type(model::AbstractSemOrLoss, params::AbstractVector{T}) where {T <: Number} = T
+objective_zero(model::AbstractSemOrLoss, params::Any) = zero(objective_type(model, params))
 
 objective_type(objective::T, gradient, hessian) where {T <: Number} = T
 objective_type(
@@ -66,94 +62,102 @@ objective_type(
 objective_zero(objective, gradient, hessian) =
     zero(objective_type(objective, gradient, hessian))
 
+evaluate!(objective, gradient, hessian, model::AbstractSem, params) =
+    error("evaluate!() for $(typeof(model)) is not implemented")
+
 ############################################################################################
-# methods for AbstractSem
+# methods for Sem
 ############################################################################################
 
-function evaluate!(objective, gradient, hessian, model::AbstractSemSingle, params)
+function evaluate!(objective, gradient, hessian, model::Sem, params)
+    # reset output
+    isnothing(objective) || (objective = objective_zero(objective, gradient, hessian))
+    isnothing(gradient) || fill!(gradient, zero(eltype(gradient)))
+    isnothing(hessian) || fill!(hessian, zero(eltype(hessian)))
+
+    # gradient and hessian for individual terms
+    t_grad = isnothing(gradient) ? nothing : similar(gradient)
+    t_hess = isnothing(hessian) ? nothing : similar(hessian)
+
+    # update implied states of all SemLoss terms before term calculation loop
+    # to make sure all terms use updated implied states
     targets = EvaluationTargets(objective, gradient, hessian)
-    # update implied state, its gradient and hessian (if required)
-    update!(targets, implied(model), model, params)
-    return evaluate!(
-        !isnothing(objective) ? zero(objective) : nothing,
-        gradient,
-        hessian,
-        loss(model),
-        model,
-        params,
-    )
+    for term in loss_terms(model)
+        issemloss(term) && update!(targets, implied(term), params)
+    end
+
+    for term in loss_terms(model)
+        t_obj = evaluate!(objective, t_grad, t_hess, term, params)
+        #@show nameof(typeof(term)) t_obj
+        objective = accumulate_loss!(
+            objective,
+            gradient,
+            hessian,
+            weight(term),
+            t_obj,
+            t_grad,
+            t_hess,
+        )
+    end
+    return objective
+end
+
+# internal function to accumulate loss objective, gradient and hessian
+function accumulate_loss!(
+    total_objective,
+    total_gradient,
+    total_hessian,
+    weight::Nothing,
+    objective,
+    gradient,
+    hessian,
+)
+    isnothing(total_gradient) || (total_gradient .+= gradient)
+    isnothing(total_hessian) || (total_hessian .+= hessian)
+    return isnothing(total_objective) ? total_objective : (total_objective + objective)
+end
+
+function accumulate_loss!(
+    total_objective,
+    total_gradient,
+    total_hessian,
+    weight::Number,
+    objective,
+    gradient,
+    hessian,
+)
+    isnothing(total_gradient) || axpy!(weight, gradient, total_gradient)
+    isnothing(total_hessian) || axpy!(weight, hessian, total_hessian)
+    return isnothing(total_objective) ? total_objective :
+           (total_objective + weight * objective)
 end
 
 ############################################################################################
 # methods for SemFiniteDiff (approximate gradient and hessian with finite differences of objective)
 ############################################################################################
 
-function evaluate!(objective, gradient, hessian, model::SemFiniteDiff, params)
-    function obj(p)
-        # recalculate implied state for p
-        update!(EvaluationTargets{true, false, false}(), implied(model), model, p)
-        evaluate!(
-            objective_zero(objective, gradient, hessian),
-            nothing,
-            nothing,
-            loss(model),
-            model,
-            p,
-        )
-    end
-    isnothing(gradient) || FiniteDiff.finite_difference_gradient!(gradient, obj, params)
-    isnothing(hessian) || FiniteDiff.finite_difference_hessian!(hessian, obj, params)
-    return !isnothing(objective) ? obj(params) : nothing
+# evaluate!() wrapper that does some housekeeping, if necessary
+_evaluate!(args...) = evaluate!(args...)
+
+# update implied state, its gradient and hessian
+function _evaluate!(objective, gradient, hessian, loss::SemLoss, params)
+    # note that any other Sem loss terms that are dependent on implied
+    # should be enumerated after the SemLoss term
+    # otherwise they would be using outdated implied state
+    update!(EvaluationTargets(objective, gradient, hessian), implied(loss), params)
+    return evaluate!(objective, gradient, hessian, loss, params)
 end
 
-objective(model::AbstractSem, params) =
-    evaluate!(objective_zero(model, params), nothing, nothing, model, params)
-
-############################################################################################
-# methods for SemLoss (weighted sum of individual SemLossFunctions)
-############################################################################################
-
-function evaluate!(objective, gradient, hessian, loss::SemLoss, model::AbstractSem, params)
-    isnothing(objective) || (objective = zero(objective))
-    isnothing(gradient) || fill!(gradient, zero(eltype(gradient)))
-    isnothing(hessian) || fill!(hessian, zero(eltype(hessian)))
-    f_grad = isnothing(gradient) ? nothing : similar(gradient)
-    f_hess = isnothing(hessian) ? nothing : similar(hessian)
-    for (f, weight) in zip(loss.functions, loss.weights)
-        f_obj = evaluate!(objective, f_grad, f_hess, f, model, params)
-        isnothing(objective) || (objective += weight * f_obj)
-        isnothing(gradient) || (gradient .+= weight * f_grad)
-        isnothing(hessian) || (hessian .+= weight * f_hess)
-    end
-    return objective
-end
-
-############################################################################################
-# methods for SemEnsemble (weighted sum of individual AbstractSemSingle models)
-############################################################################################
-
-function evaluate!(objective, gradient, hessian, ensemble::SemEnsemble, params)
-    isnothing(objective) || (objective = zero(objective))
-    isnothing(gradient) || fill!(gradient, zero(eltype(gradient)))
-    isnothing(hessian) || fill!(hessian, zero(eltype(hessian)))
-    sem_grad = isnothing(gradient) ? nothing : similar(gradient)
-    sem_hess = isnothing(hessian) ? nothing : similar(hessian)
-    for (sem, weight) in zip(ensemble.sems, ensemble.weights)
-        sem_obj = evaluate!(objective, sem_grad, sem_hess, sem, params)
-        isnothing(objective) || (objective += weight * sem_obj)
-        isnothing(gradient) || (gradient .+= weight * sem_grad)
-        isnothing(hessian) || (hessian .+= weight * sem_hess)
-    end
-    return objective
-end
+objective(model::AbstractSemOrLoss, params) =
+    _evaluate!(objective_zero(model, params), nothing, nothing, model, params)
 
 # throw an error by default if gradient! and hessian! are not implemented
 
-#= gradient!(lossfun::SemLossFunction, par, model) =
-    throw(ArgumentError("gradient for $(typeof(lossfun).name.wrapper) is not available"))
+#= gradient!(model::AbstractSemOrLoss, par, model) =
+    throw(ArgumentError("gradient for $(nameof(typeof(model))) is not available"))
 
-hessian!(lossfun::SemLossFunction, par, model) =
-    throw(ArgumentError("hessian for $(typeof(lossfun).name.wrapper) is not available")) =#
+hessian!(model::AbstractSemOrLoss, par, model) =
+    throw(ArgumentError("hessian for $(nameof(typeof(model))) is not available")) =#
 
 ############################################################################################
 # Documentation
@@ -202,16 +206,16 @@ To implement a new `AbstractSem` subtype, you can add a method for
 function hessian! end
 
 objective!(model::AbstractSem, params) =
-    evaluate!(objective_zero(model, params), nothing, nothing, model, params)
+    _evaluate!(objective_zero(model, params), nothing, nothing, model, params)
 gradient!(gradient, model::AbstractSem, params) =
-    evaluate!(nothing, gradient, nothing, model, params)
+    _evaluate!(nothing, gradient, nothing, model, params)
 hessian!(hessian, model::AbstractSem, params) =
-    evaluate!(nothing, nothing, hessian, model, params)
+    _evaluate!(nothing, nothing, hessian, model, params)
 objective_gradient!(gradient, model::AbstractSem, params) =
-    evaluate!(objective_zero(model, params), gradient, nothing, model, params)
+    _evaluate!(objective_zero(model, params), gradient, nothing, model, params)
 objective_hessian!(hessian, model::AbstractSem, params) =
-    evaluate!(objective_zero(model, params), nothing, hessian, model, params)
+    _evaluate!(objective_zero(model, params), nothing, hessian, model, params)
 gradient_hessian!(gradient, hessian, model::AbstractSem, params) =
-    evaluate!(nothing, gradient, hessian, model, params)
+    _evaluate!(nothing, gradient, hessian, model, params)
 objective_gradient_hessian!(gradient, hessian, model::AbstractSem, params) =
-    evaluate!(objective_zero(model, params), gradient, hessian, model, params)
+    _evaluate!(objective_zero(model, params), gradient, hessian, model, params)

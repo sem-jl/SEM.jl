@@ -46,14 +46,17 @@ function test_params_api(semobj, spec::SemSpecification)
     @test @inferred(params(semobj)) == params(spec)
 end
 
-@testset "Sem(implied=$impliedtype, loss=$losstype)" for impliedtype in (RAM, RAMSymbolic),
-    losstype in (SemML, SemWLS)
-
+@testset "Sem(implied=$impliedtype, loss=$losstype)" for (impliedtype, losstype) in (
+    (RAM, SemML),
+    (RAMSymbolic, SemML),
+    (RAMSymbolic, SemWLS),
+)
     model = Sem(
         specification = ram_matrices,
         observed = obs,
         implied = impliedtype,
         loss = losstype,
+        vech = losstype == SemWLS ? true : false,
     )
 
     @test model isa Sem
@@ -66,9 +69,8 @@ end
     test_vars_api(implied(model), ram_matrices)
     test_params_api(implied(model), ram_matrices)
 
-    @test @inferred(loss(model)) isa SemLoss
-    semloss = loss(model).functions[1]
-    @test semloss isa losstype
+    @test @inferred(sem_term(model)) isa SemLoss
+    @test sem_term(model) isa losstype
 
     @test @inferred(nsamples(model)) == nsamples(obs)
 end

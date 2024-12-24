@@ -1,14 +1,6 @@
 ############################################################################################
 # Define the basic type system
 ############################################################################################
-"Most abstract supertype for all SEMs"
-abstract type AbstractSem end
-
-"Supertype for all single SEMs, e.g. SEMs that have at least the fields `observed`, `implied`, `loss`"
-abstract type AbstractSemSingle{O, I, L} <: AbstractSem end
-
-"Supertype for all collections of multiple SEMs"
-abstract type AbstractSemCollection <: AbstractSem end
 
 "Meanstructure trait for `SemImplied` subtypes"
 abstract type MeanStruct end
@@ -36,48 +28,8 @@ HessianEval(::Type{T}) where {T} =
 
 HessianEval(semobj) = HessianEval(typeof(semobj))
 
-"Supertype for all loss functions of SEMs. If you want to implement a custom loss function, it should be a subtype of `SemLossFunction`."
-abstract type SemLossFunction end
-
-"""
-    SemLoss(args...; loss_weights = nothing, ...)
-
-Constructs the loss field of a SEM. Can contain multiple `SemLossFunction`s, the model is optimized over their sum.
-See also [`SemLossFunction`](@ref).
-
-# Arguments
-- `args...`: Multiple `SemLossFunction`s.
-- `loss_weights::Vector`: Weights for each loss function. Defaults to unweighted optimization.
-
-# Examples
-```julia
-my_ml_loss = SemML(...)
-my_ridge_loss = SemRidge(...)
-my_loss = SemLoss(SemML, SemRidge; loss_weights = [1.0, 2.0])
-```
-"""
-mutable struct SemLoss{F <: Tuple, T}
-    functions::F
-    weights::T
-end
-
-function SemLoss(functions...; loss_weights = nothing, kwargs...)
-    if !isnothing(loss_weights)
-        loss_weights = SemWeight.(loss_weights)
-    else
-        loss_weights = Tuple(SemWeight(nothing) for _ in 1:length(functions))
-    end
-
-    return SemLoss(functions, loss_weights)
-end
-
-# weights for loss functions or models. If the weight is nothing, multiplication returns the second argument
-struct SemWeight{T}
-    w::T
-end
-
-Base.:*(x::SemWeight{Nothing}, y) = y
-Base.:*(x::SemWeight, y) = x.w * y
+"Supertype for all loss functions of SEMs. If you want to implement a custom loss function, it should be a subtype of `AbstractLoss`."
+abstract type AbstractLoss end
 
 """
 Supertype of all objects that can serve as the `optimizer` field of a SEM.
@@ -124,165 +76,80 @@ objective, gradient and hessian (whichever is requested).
 abstract type SemImpliedState end
 
 implied(state::SemImpliedState) = state.implied
-MeanStructure(state::SemImpliedState) = MeanStructure(implied(state))
-ApproximateHessian(state::SemImpliedState) = ApproximateHessian(implied(state))
+MeanStruct(state::SemImpliedState) = MeanStruct(implied(state))
+HessianEval(state::SemImpliedState) = HessianEval(implied(state))
 
 """
-    Sem(;observed = SemObservedData, implied = RAM, loss = SemML, kwargs...)
+    abstract type SemLoss{O <: SemObserved, I <: SemImplied} <: AbstractLoss end
 
-Constructor for the basic `Sem` type.
-All additional kwargs are passed down to the constructors for the observed, implied, and loss fields.
+The base type for calculating the loss of the implied SEM model when explaining the observed data.
+
+All subtypes of `SemLoss` should have the following fields:
+- `observed::O`: object of subtype [`SemObserved`](@ref).
+- `implied::I`: object of subtype [`SemImplied`](@ref).
+"""
+abstract type SemLoss{O <: SemObserved, I <: SemImplied} <: AbstractLoss end
+
+"Most abstract supertype for all SEMs"
+abstract type AbstractSem end
+
+"""
+    struct LossTerm{L, I, W}
+
+A term of a [`Sem`](@ref) model that wraps [`AbstractLoss`](@ref) loss function of type `L`.
+Loss term can have an optional *id* of type `I` and *weight* of numeric type `W`.
+"""
+struct LossTerm{L <: AbstractLoss, I <: Union{Symbol, Nothing}, W <: Union{Number, Nothing}}
+    loss::L
+    id::I
+    weight::W
+end
+
+"""
+    Sem(loss_terms...; [params], kwargs...)
+
+SEM model (including model ensembles) that combines all the data, implied SEM structure
+and regularization terms and implements the calculation of their weighted sum, as well as its
+gradient and (optionally) Hessian.
 
 # Arguments
-- `observed`: object of subtype `SemObserved` or a constructor.
-- `implied`: object of subtype `SemImplied` or a constructor.
-- `loss`: object of subtype `SemLossFunction`s or constructor; or a tuple of such.
+- `loss_terms...`: [`AbstractLoss`](@ref) objects, including SEM losses ([`SemLoss`](@ref)),
+  optionally can be a pair of a loss object and its numeric weight
 
-Returns a Sem with fields
-- `observed::SemObserved`: Stores observed data, sample statistics, etc. See also [`SemObserved`](@ref).
-- `implied::SemImplied`: Computes model implied statistics, like Σ, μ, etc. See also [`SemImplied`](@ref).
-- `loss::SemLoss`: Computes the objective and gradient of a sum of loss functions. See also [`SemLoss`](@ref).
+# Fields
+- `loss_terms::Tuple`: a tuple of all loss functions and their weights
+- `params::Vector{Symbol}`: the vector of parameter ids shared by all loss functions.
 """
-mutable struct Sem{O <: SemObserved, I <: SemImplied, L <: SemLoss} <:
-               AbstractSemSingle{O, I, L}
-    observed::O
-    implied::I
-    loss::L
-
-    function Sem(observed::O, implied::I, loss::L) where {O, I, L}
-        # check integrity
-        observed_vars(observed) == observed_vars(implied.ram_matrices) ||
-            throw(ArgumentError("Observed and implied variables do not match."))
-
-        return new{O,I,L}(observed, implied, loss)
-    end
+struct Sem{L <: Tuple} <: AbstractSem
+    loss_terms::L
+    params::Vector{Symbol}
 end
 
 ############################################################################################
 # automatic differentiation
 ############################################################################################
+
 """
-    SemFiniteDiff(;observed = SemObservedData, implied = RAM, loss = SemML, kwargs...)
+    SemFiniteDiff(model::AbstractSem)
 
 A wrapper around [`Sem`](@ref) that substitutes dedicated evaluation of gradient and hessian with
 finite difference approximation.
 
 # Arguments
-- `observed`: object of subtype `SemObserved` or a constructor.
-- `implied`: object of subtype `SemImplied` or a constructor.
-- `loss`: object of subtype `SemLossFunction`s or constructor; or a tuple of such.
-
-Returns a Sem with fields
-- `observed::SemObserved`: Stores observed data, sample statistics, etc. See also [`SemObserved`](@ref).
-- `implied::SemImplied`: Computes model implied statistics, like Σ, μ, etc. See also [`SemImplied`](@ref).
-- `loss::SemLoss`: Computes the objective and gradient of a sum of loss functions. See also [`SemLoss`](@ref).
+- `model::Sem`: the SEM model to wrap
 """
-struct SemFiniteDiff{O <: SemObserved, I <: SemImplied, L <: SemLoss} <:
-       AbstractSemSingle{O, I, L}
-    observed::O
-    implied::I
+struct SemFiniteDiff{S <: AbstractSem} <: AbstractSem
+    model::S
+end
+
+struct LossFiniteDiff{L <: AbstractLoss} <: AbstractLoss
     loss::L
 end
 
-############################################################################################
-# ensemble models
-############################################################################################
-"""
-    (1) SemEnsemble(models..., weights = nothing, kwargs...)
-
-    (2) SemEnsemble(;specification, data, groups, column = :group, kwargs...)
-
-Constructor for ensemble models. (2) can be used to conveniently specify multigroup models.
-
-# Arguments
-- `models...`: `AbstractSem`s.
-- `weights::Vector`:  Weights for each model. Defaults to the number of observed data points.
-- `specification::EnsembleParameterTable`: Model specification.
-- `data::DataFrame`: Observed data. Must contain a `column` of type `Vector{Symbol}` that contains the group.
-- `groups::Vector{Symbol}`: Group names.
-- `column::Symbol`: Name of the column in `data` that contains the group.
-
-All additional kwargs are passed down to the model parts.
-
-Returns a SemEnsemble with fields
-- `n::Int`: Number of models.
-- `sems::Tuple`: `AbstractSem`s.
-- `weights::Vector`: Weights for each model.
-- `params::Vector`: Stores parameter labels and their position.
-"""
-struct SemEnsemble{N, T <: Tuple, V <: AbstractVector, I} <: AbstractSemCollection
-    n::N
-    sems::T
-    weights::V
-    params::I
+struct SemLossFiniteDiff{O, I, L <: SemLoss{O, I}} <: SemLoss{O, I}
+    loss::L
 end
 
-# constructor from multiple models
-function SemEnsemble(models...; weights = nothing, kwargs...)
-    n = length(models)
-
-    # default weights
-
-    if isnothing(weights)
-        nsamples_total = sum(nsamples, models)
-        weights = [nsamples(model) / nsamples_total for model in models]
-    end
-
-    # check parameters equality
-    params = SEM.params(models[1])
-    for model in models
-        if params != SEM.params(model)
-            throw(ErrorException("The parameters of your models do not match. \n
-            Maybe you tried to specify models of an ensemble via ParameterTables. \n
-            In that case, you may use RAMMatrices instead."))
-        end
-    end
-
-    return SemEnsemble(n, models, weights, params)
-end
-
-# constructor from EnsembleParameterTable and data set
-function SemEnsemble(; specification, data, groups, column = :group, kwargs...)
-    if specification isa EnsembleParameterTable
-        specification = convert(Dict{Symbol, RAMMatrices}, specification)
-    end
-    models = []
-    for group in groups
-        ram_matrices = specification[group]
-        data_group = select(filter(r -> r[column] == group, data), Not(column))
-        if iszero(nrow(data_group))
-            error("Your data does not contain any observations from group `$(group)`.")
-        end
-        model = Sem(; specification = ram_matrices, data = data_group, kwargs...)
-        push!(models, model)
-    end
-    return SemEnsemble(models...; weights = nothing, kwargs...)
-end
-
-params(ensemble::SemEnsemble) = ensemble.params
-
-"""
-    n_models(ensemble::SemEnsemble) -> Integer
-
-Returns the number of models in an ensemble model.
-"""
-n_models(ensemble::SemEnsemble) = ensemble.n
-"""
-    models(ensemble::SemEnsemble) -> Tuple{AbstractSem}
-
-Returns the models in an ensemble model.
-"""
-models(ensemble::SemEnsemble) = ensemble.sems
-"""
-    weights(ensemble::SemEnsemble) -> Vector
-
-Returns the weights of an ensemble model.
-"""
-weights(ensemble::SemEnsemble) = ensemble.weights
-
-"""
-Base type for all SEM specifications.
-"""
 abstract type SemSpecification end
 
 abstract type AbstractParameterTable <: SemSpecification end

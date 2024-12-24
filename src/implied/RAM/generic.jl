@@ -163,7 +163,7 @@ end
 ### methods
 ############################################################################################
 
-function update!(targets::EvaluationTargets, implied::RAM, model::AbstractSemSingle, params)
+function update!(targets::EvaluationTargets, implied::RAM, params)
     materialize!(implied.A, implied.ram_matrices.A, params)
     materialize!(implied.S, implied.ram_matrices.S, params)
     if !isnothing(implied.M)

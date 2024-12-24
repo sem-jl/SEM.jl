@@ -18,15 +18,15 @@ end
 
 predict_latent_scores(
     fit::SemFit,
-    data::SemObserved = fit.model.observed;
+    data::SemObserved = observed(sem_term(fit.model));
     method::Symbol = :regression,
 ) = predict_latent_scores(SemScoresPredictMethod(method), fit, data)
 
 predict_latent_scores(
     method::SemScoresPredictMethod,
     fit::SemFit,
-    data::SemObserved = fit.model.observed,
-) = predict_latent_scores(method, fit.model, fit.solution, data)
+    data::SemObserved = observed(sem_term(fit.model)),
+) = predict_latent_scores(method, loss(sem_term(fit.model)), fit.solution, data)
 
 function inv_cov!(A::AbstractMatrix)
     if istril(A)
@@ -41,10 +41,10 @@ end
 
 function latent_scores_operator(
     ::SemRegressionScores,
-    model::AbstractSemSingle,
+    model::SemLoss,
     params::AbstractVector,
 )
-    implied = model.implied
+    implied = SEM.implied(model)
     ram = implied.ram_matrices
     lv_inds = latent_var_indices(ram)
 
@@ -60,12 +60,8 @@ function latent_scores_operator(
     return cov_lv * lv_FA' * Σ⁻¹
 end
 
-function latent_scores_operator(
-    ::SemBartlettScores,
-    model::AbstractSemSingle,
-    params::AbstractVector,
-)
-    implied = model.implied
+function latent_scores_operator(::SemBartlettScores, model::SemLoss, params::AbstractVector)
+    implied = SEM.implied(model)
     ram = implied.ram_matrices
     lv_inds = latent_var_indices(ram)
     A = materialize(ram.A, params)
@@ -80,13 +76,13 @@ end
 
 function predict_latent_scores(
     method::SemScoresPredictMethod,
-    model::AbstractSemSingle,
+    model::SemLoss,
     params::AbstractVector,
-    data::SemObserved,
+    data::SemObserved = observed(model),
 )
     nobserved_vars(data) == nobserved_vars(model) || throw(
         DimensionMismatch(
-            "Number of variables in data ($(nobserved_vars(data))) does not match the number of observed variables in the model ($(nobserved_vars(model)))",
+            "Number of variables in data ($(nsamples(data))) does not match the number of observed variables in the model ($(nobserved_vars(model)))",
         ),
     )
     length(params) == nparams(model) || throw(
@@ -95,10 +91,8 @@ function predict_latent_scores(
         ),
     )
 
-    implied = model.implied
-    hasmeanstruct = MeanStructure(implied) === HasMeanStructure
-
-    update!(EvaluationTargets(0.0, nothing, nothing), model.implied, model, params)
+    implied = SEM.implied(model)
+    update!(EvaluationTargets(0.0, nothing, nothing), implied, params)
     ram = implied.ram_matrices
     lv_inds = latent_var_indices(ram)
     A = materialize(ram.A, params)
@@ -109,10 +103,17 @@ function predict_latent_scores(
     data =
         data.data .- (isnothing(data.obs_mean) ? mean(data.data, dims = 1) : data.obs_mean')
     lv_scores = data * lv_scores_op'
-    if hasmeanstruct
+    if MeanStructure(implied) === HasMeanStructure
         M = materialize(ram.M, params)
         lv_scores .+= (lv_I_A⁻¹ * M)'
     end
 
     return lv_scores
 end
+
+predict_latent_scores(
+    model::SemLoss,
+    params::AbstractVector,
+    data::SemObserved = observed(model);
+    method::Symbol = :regression,
+) = predict_latent_scores(SemScoresPredictMethod(method), model, params, data)
