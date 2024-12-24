@@ -1,5 +1,3 @@
-using StructuralEquationModels, Test, ProximalCore, ProximalAlgorithms, ProximalOperators
-
 # load data
 dat = example_data("political_democracy")
 
