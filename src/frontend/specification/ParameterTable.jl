@@ -243,6 +243,18 @@ See [sort_vars!](@ref) for in-place version.
 """
 sort_vars(partable::ParameterTable) = sort_vars!(deepcopy(partable))
 
+function reorder_observed_vars!(partable::ParameterTable, new_order::AbstractVector{Symbol})
+    # just check that it's 1-to-1
+    source_to_dest_perm(
+        partable.variables.observed,
+        new_order,
+        one_to_one = true,
+        entities = "observed variables",
+    )
+    copy!(partable.variables.observed, new_order)
+    return partable
+end
+
 # add a row --------------------------------------------------------------------------------
 
 function Base.push!(partable::ParameterTable, d::Union{AbstractDict{Symbol}, NamedTuple})
