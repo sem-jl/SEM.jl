@@ -184,9 +184,9 @@ function evaluate!(objective, gradient, hessian, ml::SemML, par)
     end
 
     if !isnothing(gradient)
-        S = implied.S
-        F⨉I_A⁻¹ = implied.F⨉I_A⁻¹
-        I_A⁻¹ = implied.I_A⁻¹
+        S = parent(implied.S)
+        F⨉I_A⁻¹ = parent(implied.F⨉I_A⁻¹)
+        I_A⁻¹ = parent(implied.I_A⁻¹)
         ∇A = implied.∇A
         ∇S = implied.∇S
 
@@ -198,15 +198,9 @@ function evaluate!(objective, gradient, hessian, ml::SemML, par)
         C = mul!(
             ml.varXvar_1,
             F⨉I_A⁻¹',
-            mul!(ml.obsXvar_1, Symmetric(mul!(ml.obsXobs_3, one_Σ⁻¹Σₒ, Σ⁻¹)), F⨉I_A⁻¹),
+            mul!(ml.obsXvar_1, mul!(ml.obsXobs_3, one_Σ⁻¹Σₒ, Σ⁻¹), F⨉I_A⁻¹),
         )
-        mul!(
-            gradient,
-            ∇A',
-            vec(mul!(ml.varXvar_3, Symmetric(C), mul!(ml.varXvar_2, S, I_A⁻¹'))),
-            2,
-            0,
-        )
+        mul!(gradient, ∇A', vec(mul!(ml.varXvar_3, C, mul!(ml.varXvar_2, S, I_A⁻¹'))), 2, 0)
         mul!(gradient, ∇S', vec(C), 1, 1)
 
         if MeanStruct(implied) === HasMeanStruct

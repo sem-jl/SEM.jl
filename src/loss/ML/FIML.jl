@@ -164,16 +164,18 @@ end
 function ∇F_fiml_outer!(G, JΣ, Jμ, fiml::SemFIML)
     implied = fiml.implied
 
+    I_A⁻¹ = parent(implied.I_A⁻¹)
+    F⨉I_A⁻¹ = parent(implied.F * I_A⁻¹)
+    S = parent(implied.S)
+
     Iₙ = sparse(1.0I, size(implied.A)...)
-    P = kron(implied.F⨉I_A⁻¹, implied.F⨉I_A⁻¹)
-    Q = kron(implied.S * implied.I_A⁻¹', Iₙ)
+    P = kron(F⨉I_A⁻¹, F⨉I_A⁻¹)
+    Q = kron(S * I_A⁻¹', Iₙ)
     Q .+= fiml.commutator * Q
 
     ∇Σ = P * (implied.∇S + Q * implied.∇A)
 
-    ∇μ =
-        implied.F⨉I_A⁻¹ * implied.∇M +
-        kron((implied.I_A⁻¹ * implied.M)', implied.F⨉I_A⁻¹) * implied.∇A
+    ∇μ = F⨉I_A⁻¹ * implied.∇M + kron((I_A⁻¹ * implied.M)', F⨉I_A⁻¹) * implied.∇A
 
     mul!(G, ∇Σ', JΣ) # actually transposed
     mul!(G, ∇μ', Jμ, -1, 1)
