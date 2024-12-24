@@ -1,6 +1,6 @@
 module SEMNLOptExt
 
-using StructuralEquationModels, NLopt
+using StructuralEquationModels, NLopt, Printf
 
 SEM = StructuralEquationModels
 

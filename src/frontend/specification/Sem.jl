@@ -192,7 +192,7 @@ function Base.show(io::IO, loss::SemLoss)
         if isnothing(weight.w)
             print(io, "   one \n")
         else
-            print(io, "$(round.(weight.w, digits = 2)) \n")
+            @printf(io, "%.3g\n", weight.w)
         end
     end
 end

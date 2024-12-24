@@ -106,9 +106,9 @@ end
 ############################################################################################
 
 function Base.show(io::IO, result::ProximalResult)
-    print(io, "Minimum:          $(round(result.result[:minimum]; digits = 2)) \n")
-    print(io, "No. evaluations:  $(result.result[:iterations]) \n")
-    print(io, "Operator:         $(nameof(typeof(result.result[:operator_g]))) \n")
+    @printf(io, "Minimum:          %.4g\n", result.result[:minimum])
+    print(io,   "No. evaluations:  $(result.result[:iterations]) \n")
+    print(io,   "Operator:         $(nameof(typeof(result.result[:operator_g]))) \n")
     if haskey(result.result, :operator_h)
         print(io, "Second Operator:  $(nameof(typeof(result.result[:operator_h]))) \n")
     end

@@ -1,6 +1,7 @@
 module StructuralEquationModels
 
 using LinearAlgebra,
+    Printf,
     Optim,
     NLSolversBase,
     Statistics,

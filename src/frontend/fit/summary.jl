@@ -38,8 +38,7 @@ function sem_summary(
             key_length = length(string(k))
             print(k)
             print(repeat(" ", goal_length - key_length))
-            print(round(a[k]; digits = 2))
-            print("\n")
+            @printf("%.3g\n", a[k])
         end
     end
     print("\n")
