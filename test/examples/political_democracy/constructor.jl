@@ -4,33 +4,39 @@
 
 semoptimizer = SemOptimizer(engine = opt_engine)
 
-model_ml = Sem(SemML(SemObservedData(dat), RAM(spec)))
+model_ml = Sem(specification = spec, data = dat)
 @test SEM.params(model_ml) == SEM.params(spec)
-@test SEM.nloss_terms(model_ml) == 1
-@test SEM.sem_terms(model_ml) isa Tuple{SEM.LossTerm{<:SemML, Nothing, Nothing}}
 
 model_ml_cov = Sem(
-    SemML(
-        SemObservedCovariance(
-            cov(Matrix(dat)),
-            obs_colnames = Symbol.(names(dat)),
-            n_obs = 75,
-        ),
-        RAM(spec),
-    ),
+    specification = spec,
+    observed = SemObservedCovariance,
+    obs_cov = cov(Matrix(dat)),
+    observed_vars = Symbol.(names(dat)),
+    nsamples = 75,
 )
 
-model_ls_sym = Sem(SemWLS(SemObservedData(dat), RAMSymbolic(spec, vech = true)))
+model_ls_sym =
+    Sem(specification = spec, data = dat, implied = RAMSymbolic, vech = true, loss = SemWLS)
 
-model_ml_sym = Sem(SemML(SemObservedData(dat), RAMSymbolic(spec)))
+model_ml_sym = Sem(specification = spec, data = dat, implied = RAMSymbolic)
 
-model_ml_ridge = Sem(SemML(SemObservedData(dat), RAM(spec)), SemRidge(spec, 16:20) => 0.001)
+model_ml_ridge = Sem(
+    specification = spec,
+    data = dat,
+    loss = (SemML, SemRidge),
+    α_ridge = 0.001,
+    which_ridge = 16:20,
+)
 
-@test SEM.nloss_terms(model_ml_ridge) == 2
+model_ml_const = Sem(
+    specification = spec,
+    data = dat,
+    loss = (SemML, SemConstant),
+    constant_loss = 3.465,
+)
 
-model_ml_const = Sem(SemML(SemObservedData(dat), RAM(spec)), SemConstant(3.465))
-
-model_ml_weighted = Sem(SemML(SemObservedData(dat), RAM(partable)) => size(dat, 1))
+model_ml_weighted =
+    Sem(SemML(SemObservedData(data = dat), RAMSymbolic(spec)) => nsamples(model_ml))
 
 ############################################################################################
 ### test gradients
@@ -84,7 +90,7 @@ end
     solution_ml = sem_fit(semoptimizer, model_ml)
     solution_ml_weighted = sem_fit(semoptimizer, model_ml_weighted)
     @test solution(solution_ml) ≈ solution(solution_ml_weighted) rtol = 1e-3
-    @test n_obs(model_ml) * StructuralEquationModels.minimum(solution_ml) ≈
+    @test nsamples(model_ml) * StructuralEquationModels.minimum(solution_ml) ≈
           StructuralEquationModels.minimum(solution_ml_weighted) rtol = 1e-6
 end
 
@@ -149,13 +155,13 @@ end
         model_ml,
         data = rand(model_ml, params, 1_000_000),
         specification = spec,
-        obs_colnames = colnames,
+        observed_vars = colnames,
     )
     model_ml_sym_new = swap_observed(
         model_ml_sym,
         data = rand(model_ml_sym, params, 1_000_000),
         specification = spec,
-        obs_colnames = colnames,
+        observed_vars = colnames,
     )
     # fit models
     sol_ml = solution(sem_fit(semoptimizer, model_ml_new))
@@ -172,10 +178,21 @@ end
 if opt_engine == :Optim
     using Optim, LineSearches
 
-    model_ls =
-        Sem(SemWLS(SemObservedData(dat), RAMSymbolic(spec, vech = true, hessian = true)))
+    model_ls = Sem(
+        data = dat,
+        specification = spec,
+        observed = SemObservedData,
+        implied = RAMSymbolic(spec, vech = true, hessian = true),
+        loss = SemWLS,
+    )
 
-    model_ml = Sem(SemML(SemObservedData(dat), RAMSymbolic(spec, hessian = true)))
+    model_ml = Sem(
+        data = dat,
+        specification = spec,
+        observed = SemObservedData,
+        implied = RAMSymbolic(spec, hessian = true),
+        loss = SemML,
+    )
 
     @testset "ml_hessians" begin
         test_hessian(model_ml, start_test; atol = 1e-4)
@@ -219,23 +236,29 @@ end
 ############################################################################################
 
 # models
-model_ls = Sem(SemWLS(SemObservedData(dat), RAMSymbolic(spec_mean, vech = true)))
-
-model_ml = Sem(SemML(SemObservedData(dat), RAM(spec_mean)))
-
-model_ml_cov = Sem(
-    SemML(
-        SemObservedCovariance(
-            cov(Matrix(dat)),
-            vec(mean(Matrix(dat), dims = 1)),
-            obs_colnames = names(dat),
-            n_obs = 75,
-        ),
-        RAM(spec_mean),
-    ),
+model_ls = Sem(
+    specification = spec_mean,
+    data = dat,
+    implied = RAMSymbolic,
+    vech = true,
+    loss = SemWLS,
+    meanstructure = true,
 )
 
-model_ml_sym = Sem(SemML(SemObservedData(dat), RAMSymbolic(spec_mean)))
+model_ml = Sem(specification = spec_mean, data = dat, meanstructure = true)
+
+model_ml_cov = Sem(
+    specification = spec_mean,
+    observed = SemObservedCovariance,
+    obs_cov = cov(Matrix(dat)),
+    obs_mean = vcat(mean(Matrix(dat), dims = 1)...),
+    observed_vars = Symbol.(names(dat)),
+    meanstructure = true,
+    nsamples = 75,
+)
+
+model_ml_sym =
+    Sem(specification = spec_mean, data = dat, implied = RAMSymbolic, meanstructure = true)
 
 ############################################################################################
 ### test gradients
@@ -329,14 +352,14 @@ end
         model_ml,
         data = rand(model_ml, params, 1_000_000),
         specification = spec,
-        obs_colnames = colnames,
+        observed_vars = colnames,
         meanstructure = true,
     )
     model_ml_sym_new = swap_observed(
         model_ml_sym,
         data = rand(model_ml_sym, params, 1_000_000),
         specification = spec,
-        obs_colnames = colnames,
+        observed_vars = colnames,
         meanstructure = true,
     )
     # fit models
@@ -352,11 +375,22 @@ end
 ############################################################################################
 
 # models
-obs_missing = SemObservedMissing(dat_missing, obs_colnames = SEM.observed_vars(spec_mean))
+model_ml = Sem(
+    specification = spec_mean,
+    data = dat_missing,
+    observed = SemObservedMissing,
+    loss = SemFIML,
+    meanstructure = true,
+)
 
-model_ml = Sem(SemFIML(obs_missing, RAM(spec_mean)))
-
-model_ml_sym = Sem(SemFIML(obs_missing, RAMSymbolic(spec_mean)))
+model_ml_sym = Sem(
+    specification = spec_mean,
+    data = dat_missing,
+    observed = SemObservedMissing,
+    implied = RAMSymbolic,
+    loss = SemFIML,
+    meanstructure = true,
+)
 
 ############################################################################################
 ### test gradients
