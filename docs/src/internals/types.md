@@ -8,6 +8,6 @@ The type hierarchy is implemented in `"src/types.jl"`.
     - `SemFiniteDiff`: models whose gradients and/or hessians should be computed via finite difference approximation
 - `AbstractSemCollection <: AbstractSem` is an abstract supertype of all models that contain multiple `AbstractSem` submodels
 
-Every `AbstractSemSingle` has to have `SemObserved`, `SemImply`, `SemLoss` and `SemOptimizer` fields (and can have additional fields).
+Every `AbstractSemSingle` has to have `SemObserved`, `SemImplied`, `SemLoss` and `SemOptimizer` fields (and can have additional fields).
 
 `SemLoss` is a container for multiple `SemLossFunctions`.

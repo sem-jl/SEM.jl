@@ -8,18 +8,18 @@ Ridge regularization.
 
 # Constructor
 
-    SemRidge(;α_ridge, which_ridge, nparams, parameter_type = Float64, imply = nothing, kwargs...)
+    SemRidge(;α_ridge, which_ridge, nparams, parameter_type = Float64, implied = nothing, kwargs...)
 
 # Arguments
 - `α_ridge`: hyperparameter for penalty term
 - `which_ridge::Vector`: Vector of parameter labels (Symbols) or indices that indicate which parameters should be regularized.
 - `nparams::Int`: number of parameters of the model
-- `imply::SemImply`: imply part of the model
+- `implied::SemImplied`: implied part of the model
 - `parameter_type`: type of the parameters
 
 # Examples
 ```julia
-my_ridge = SemRidge(;α_ridge = 0.02, which_ridge = [:λ₁, :λ₂, :ω₂₃], nparams = 30, imply = my_imply)
+my_ridge = SemRidge(;α_ridge = 0.02, which_ridge = [:λ₁, :λ₂, :ω₂₃], nparams = 30, implied = my_implied)
 ```
 
 # Interfaces
@@ -48,18 +48,18 @@ function SemRidge(;
     which_ridge,
     nparams,
     parameter_type = Float64,
-    imply = nothing,
+    implied = nothing,
     kwargs...,
 )
     if eltype(which_ridge) <: Symbol
-        if isnothing(imply)
+        if isnothing(implied)
             throw(
                 ArgumentError(
-                    "When referring to parameters by label, `imply = ...` has to be specified",
+                    "When referring to parameters by label, `implied = ...` has to be specified",
                 ),
             )
         else
-            par2ind = Dict(par => ind for (ind, par) in enumerate(params(imply)))
+            par2ind = Dict(par => ind for (ind, par) in enumerate(params(implied)))
             which_ridge = getindex.(Ref(par2ind), which_ridge)
         end
     end

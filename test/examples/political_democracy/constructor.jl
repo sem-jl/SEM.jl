@@ -8,7 +8,7 @@ using Random, NLopt
 semoptimizer = SemOptimizer(engine = opt_engine)
 
 model_ml = Sem(specification = spec, data = dat)
-@test SEM.params(model_ml.imply.ram_matrices) == SEM.params(spec)
+@test SEM.params(model_ml.implied.ram_matrices) == SEM.params(spec)
 
 model_ml_cov = Sem(
     specification = spec,
@@ -18,9 +18,9 @@ model_ml_cov = Sem(
     nsamples = 75,
 )
 
-model_ls_sym = Sem(specification = spec, data = dat, imply = RAMSymbolic, loss = SemWLS)
+model_ls_sym = Sem(specification = spec, data = dat, implied = RAMSymbolic, loss = SemWLS)
 
-model_ml_sym = Sem(specification = spec, data = dat, imply = RAMSymbolic)
+model_ml_sym = Sem(specification = spec, data = dat, implied = RAMSymbolic)
 
 model_ridge = Sem(
     specification = spec,
@@ -199,7 +199,7 @@ if opt_engine == :Optim
     model_ls = Sem(
         specification = spec,
         data = dat,
-        imply = RAMSymbolic,
+        implied = RAMSymbolic,
         loss = SemWLS,
         hessian = true,
         algorithm = Newton(;
@@ -211,7 +211,7 @@ if opt_engine == :Optim
     model_ml = Sem(
         specification = spec,
         data = dat,
-        imply = RAMSymbolic,
+        implied = RAMSymbolic,
         hessian = true,
         algorithm = Newton(),
     )
@@ -251,7 +251,7 @@ end
 model_ls = Sem(
     specification = spec_mean,
     data = dat,
-    imply = RAMSymbolic,
+    implied = RAMSymbolic,
     loss = SemWLS,
     meanstructure = true,
 )
@@ -269,7 +269,7 @@ model_ml_cov = Sem(
 )
 
 model_ml_sym =
-    Sem(specification = spec_mean, data = dat, imply = RAMSymbolic, meanstructure = true)
+    Sem(specification = spec_mean, data = dat, implied = RAMSymbolic, meanstructure = true)
 
 ############################################################################################
 ### test gradients
@@ -405,7 +405,7 @@ model_ml_sym = Sem(
     specification = spec_mean,
     data = dat_missing,
     observed = SemObservedMissing,
-    imply = RAMSymbolic,
+    implied = RAMSymbolic,
     loss = SemFIML,
     meanstructure = true,
 )

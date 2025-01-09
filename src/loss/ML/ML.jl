@@ -58,14 +58,14 @@ end
 ############################################################################################
 
 ############################################################################################
-### Symbolic Imply Types
+### Symbolic Implied Types
 
 function evaluate!(
     objective,
     gradient,
     hessian,
     semml::SemML,
-    implied::SemImplySymbolic,
+    implied::SemImpliedSymbolic,
     model::AbstractSemSingle,
     par,
 )
@@ -132,7 +132,7 @@ function evaluate!(
 end
 
 ############################################################################################
-### Non-Symbolic Imply Types
+### Non-Symbolic Implied Types
 
 function evaluate!(
     objective,
@@ -144,7 +144,7 @@ function evaluate!(
     par,
 )
     if !isnothing(hessian)
-        error("hessian of ML + non-symbolic imply type is not available")
+        error("hessian of ML + non-symbolic implied type is not available")
     end
 
     Σ = implied.Σ

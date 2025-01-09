@@ -15,7 +15,7 @@ minus2ll(
 ) = minus2ll(
     sem_fit,
     sem_fit.model.observed,
-    sem_fit.model.imply,
+    sem_fit.model.implied,
     sem_fit.model.loss.functions...,
 )
 
@@ -67,7 +67,7 @@ end
 ############################################################################################
 
 minus2ll(minimum, model::AbstractSemSingle) =
-    minus2ll(minimum, model.observed, model.imply, model.loss.functions...)
+    minus2ll(minimum, model.observed, model.implied, model.loss.functions...)
 
 function minus2ll(
     sem_fit::SemFit{Mi, So, St, Mo, O} where {Mi, So, St, Mo <: SemEnsemble, O},

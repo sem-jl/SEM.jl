@@ -23,28 +23,28 @@ is_hessian_required(::EvaluationTargets{<:Any, <:Any, H}) where {H} = H
 
 (targets::EvaluationTargets)(arg_tuple::Tuple) = targets(arg_tuple...)
 
-# dispatch on SemImply
+# dispatch on SemImplied
 evaluate!(objective, gradient, hessian, loss::SemLossFunction, model::AbstractSem, params) =
-    evaluate!(objective, gradient, hessian, loss, imply(model), model, params)
+    evaluate!(objective, gradient, hessian, loss, implied(model), model, params)
 
 # fallback method
-function evaluate!(obj, grad, hess, loss::SemLossFunction, imply::SemImply, model, params)
-    isnothing(obj) || (obj = objective(loss, imply, model, params))
-    isnothing(grad) || copyto!(grad, gradient(loss, imply, model, params))
-    isnothing(hess) || copyto!(hess, hessian(loss, imply, model, params))
+function evaluate!(obj, grad, hess, loss::SemLossFunction, implied::SemImplied, model, params)
+    isnothing(obj) || (obj = objective(loss, implied, model, params))
+    isnothing(grad) || copyto!(grad, gradient(loss, implied, model, params))
+    isnothing(hess) || copyto!(hess, hessian(loss, implied, model, params))
     return obj
 end
 
 # fallback methods
-objective(f::SemLossFunction, imply::SemImply, model, params) = objective(f, model, params)
-gradient(f::SemLossFunction, imply::SemImply, model, params) = gradient(f, model, params)
-hessian(f::SemLossFunction, imply::SemImply, model, params) = hessian(f, model, params)
+objective(f::SemLossFunction, implied::SemImplied, model, params) = objective(f, model, params)
+gradient(f::SemLossFunction, implied::SemImplied, model, params) = gradient(f, model, params)
+hessian(f::SemLossFunction, implied::SemImplied, model, params) = hessian(f, model, params)
 
-# fallback method for SemImply that calls update_xxx!() methods
-function update!(targets::EvaluationTargets, imply::SemImply, model, params)
-    is_objective_required(targets) && update_objective!(imply, model, params)
-    is_gradient_required(targets) && update_gradient!(imply, model, params)
-    is_hessian_required(targets) && update_hessian!(imply, model, params)
+# fallback method for SemImplied that calls update_xxx!() methods
+function update!(targets::EvaluationTargets, implied::SemImplied, model, params)
+    is_objective_required(targets) && update_objective!(implied, model, params)
+    is_gradient_required(targets) && update_gradient!(implied, model, params)
+    is_hessian_required(targets) && update_hessian!(implied, model, params)
 end
 
 # guess objective type
@@ -72,8 +72,8 @@ objective_zero(objective, gradient, hessian) =
 
 function evaluate!(objective, gradient, hessian, model::AbstractSemSingle, params)
     targets = EvaluationTargets(objective, gradient, hessian)
-    # update imply state, its gradient and hessian (if required)
-    update!(targets, imply(model), model, params)
+    # update implied state, its gradient and hessian (if required)
+    update!(targets, implied(model), model, params)
     return evaluate!(
         !isnothing(objective) ? zero(objective) : nothing,
         gradient,
@@ -90,8 +90,8 @@ end
 
 function evaluate!(objective, gradient, hessian, model::SemFiniteDiff, params)
     function obj(p)
-        # recalculate imply state for p
-        update!(EvaluationTargets{true, false, false}(), imply(model), model, p)
+        # recalculate implied state for p
+        update!(EvaluationTargets{true, false, false}(), implied(model), model, p)
         evaluate!(
             objective_zero(objective, gradient, hessian),
             nothing,
@@ -165,7 +165,7 @@ Returns the objective value at `params`.
 The model object can be modified.
 
 # Implementation
-To implement a new `SemImply` or `SemLossFunction` subtype, you need to add a method for
+To implement a new `SemImplied` or `SemLossFunction` subtype, you need to add a method for
     objective!(newtype::MyNewType, params, model::AbstractSemSingle)
 
 To implement a new `AbstractSem` subtype, you need to add a method for
@@ -179,7 +179,7 @@ function objective! end
 Writes the gradient value at `params` to `gradient`.
 
 # Implementation
-To implement a new `SemImply` or `SemLossFunction` type, you can add a method for
+To implement a new `SemImplied` or `SemLossFunction` type, you can add a method for
     gradient!(newtype::MyNewType, params, model::AbstractSemSingle)
 
 To implement a new `AbstractSem` subtype, you can add a method for
@@ -193,7 +193,7 @@ function gradient! end
 Writes the hessian value at `params` to `hessian`.
 
 # Implementation
-To implement a new `SemImply` or `SemLossFunction` type, you can add a method for
+To implement a new `SemImplied` or `SemLossFunction` type, you can add a method for
     hessian!(newtype::MyNewType, params, model::AbstractSemSingle)
 
 To implement a new `AbstractSem` subtype, you can add a method for

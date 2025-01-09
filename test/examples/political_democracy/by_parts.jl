@@ -5,10 +5,10 @@
 # observed ---------------------------------------------------------------------------------
 observed = SemObservedData(specification = spec, data = dat)
 
-# imply
-imply_ram = RAM(specification = spec)
+# implied
+implied_ram = RAM(specification = spec)
 
-imply_ram_sym = RAMSymbolic(specification = spec)
+implied_ram_sym = RAMSymbolic(specification = spec)
 
 # loss functions ---------------------------------------------------------------------------
 ml = SemML(observed = observed)
@@ -29,18 +29,18 @@ optimizer_obj = SemOptimizer(engine = opt_engine)
 
 # models -----------------------------------------------------------------------------------
 
-model_ml = Sem(observed, imply_ram, loss_ml)
+model_ml = Sem(observed, implied_ram, loss_ml)
 
 model_ls_sym = Sem(observed, RAMSymbolic(specification = spec, vech = true), loss_wls)
 
-model_ml_sym = Sem(observed, imply_ram_sym, loss_ml)
+model_ml_sym = Sem(observed, implied_ram_sym, loss_ml)
 
-model_ridge = Sem(observed, imply_ram, SemLoss(ml, ridge))
+model_ridge = Sem(observed, implied_ram, SemLoss(ml, ridge))
 
-model_constant = Sem(observed, imply_ram, SemLoss(ml, constant))
+model_constant = Sem(observed, implied_ram, SemLoss(ml, constant))
 
 model_ml_weighted =
-    Sem(observed, imply_ram, SemLoss(ml; loss_weights = [nsamples(model_ml)]))
+    Sem(observed, implied_ram, SemLoss(ml; loss_weights = [nsamples(model_ml)]))
 
 ############################################################################################
 ### test gradients
@@ -158,13 +158,13 @@ if opt_engine == :Optim
         ),
     )
 
-    imply_sym_hessian_vech = RAMSymbolic(specification = spec, vech = true, hessian = true)
+    implied_sym_hessian_vech = RAMSymbolic(specification = spec, vech = true, hessian = true)
 
-    imply_sym_hessian = RAMSymbolic(specification = spec, hessian = true)
+    implied_sym_hessian = RAMSymbolic(specification = spec, hessian = true)
 
-    model_ls = Sem(observed, imply_sym_hessian_vech, loss_wls)
+    model_ls = Sem(observed, implied_sym_hessian_vech, loss_wls)
 
-    model_ml = Sem(observed, imply_sym_hessian, loss_ml)
+    model_ml = Sem(observed, implied_sym_hessian, loss_ml)
 
     @testset "ml_hessians" begin
         test_hessian(model_ml, start_test; atol = 1e-4)
@@ -199,10 +199,10 @@ end
 # observed ---------------------------------------------------------------------------------
 observed = SemObservedData(specification = spec_mean, data = dat, meanstructure = true)
 
-# imply
-imply_ram = RAM(specification = spec_mean, meanstructure = true)
+# implied
+implied_ram = RAM(specification = spec_mean, meanstructure = true)
 
-imply_ram_sym = RAMSymbolic(specification = spec_mean, meanstructure = true)
+implied_ram_sym = RAMSymbolic(specification = spec_mean, meanstructure = true)
 
 # loss functions ---------------------------------------------------------------------------
 ml = SemML(observed = observed, meanstructure = true)
@@ -218,7 +218,7 @@ loss_wls = SemLoss(wls)
 optimizer_obj = SemOptimizer(engine = opt_engine)
 
 # models -----------------------------------------------------------------------------------
-model_ml = Sem(observed, imply_ram, loss_ml)
+model_ml = Sem(observed, implied_ram, loss_ml)
 
 model_ls = Sem(
     observed,
@@ -226,7 +226,7 @@ model_ls = Sem(
     loss_wls,
 )
 
-model_ml_sym = Sem(observed, imply_ram_sym, loss_ml)
+model_ml_sym = Sem(observed, implied_ram_sym, loss_ml)
 
 ############################################################################################
 ### test gradients
@@ -314,9 +314,9 @@ fiml = SemFIML(observed = observed, specification = spec_mean)
 
 loss_fiml = SemLoss(fiml)
 
-model_ml = Sem(observed, imply_ram, loss_fiml)
+model_ml = Sem(observed, implied_ram, loss_fiml)
 
-model_ml_sym = Sem(observed, imply_ram_sym, loss_fiml)
+model_ml_sym = Sem(observed, implied_ram_sym, loss_fiml)
 
 ############################################################################################
 ### test gradients

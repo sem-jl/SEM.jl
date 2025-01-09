@@ -4,11 +4,11 @@ const SEM = StructuralEquationModels
 # ML estimation
 ############################################################################################
 
-model_g1 = Sem(specification = specification_g1, data = dat_g1, imply = RAMSymbolic)
+model_g1 = Sem(specification = specification_g1, data = dat_g1, implied = RAMSymbolic)
 
-model_g2 = Sem(specification = specification_g2, data = dat_g2, imply = RAM)
+model_g2 = Sem(specification = specification_g2, data = dat_g2, implied = RAM)
 
-@test SEM.params(model_g1.imply.ram_matrices) == SEM.params(model_g2.imply.ram_matrices)
+@test SEM.params(model_g1.implied.ram_matrices) == SEM.params(model_g2.implied.ram_matrices)
 
 # test the different constructors
 model_ml_multigroup = SemEnsemble(model_g1, model_g2; optimizer = semoptimizer)
@@ -94,9 +94,9 @@ specification_s = convert(Dict{Symbol, RAMMatrices}, partable_s)
 specification_g1_s = specification_s[:Pasteur]
 specification_g2_s = specification_s[:Grant_White]
 
-model_g1 = Sem(specification = specification_g1_s, data = dat_g1, imply = RAMSymbolic)
+model_g1 = Sem(specification = specification_g1_s, data = dat_g1, implied = RAMSymbolic)
 
-model_g2 = Sem(specification = specification_g2_s, data = dat_g2, imply = RAM)
+model_g2 = Sem(specification = specification_g2_s, data = dat_g2, implied = RAM)
 
 model_ml_multigroup = SemEnsemble(model_g1, model_g2; optimizer = semoptimizer)
 
@@ -145,7 +145,7 @@ end
 end
 
 @testset "sorted | LowerTriangular A" begin
-    @test imply(model_ml_multigroup.sems[2]).A isa LowerTriangular
+    @test implied(model_ml_multigroup.sems[2]).A isa LowerTriangular
 end
 
 ############################################################################################
@@ -165,7 +165,7 @@ end
 using LinearAlgebra: isposdef, logdet, tr, inv
 
 function SEM.objective(ml::UserSemML, model::AbstractSem, params)
-    Σ = imply(model).Σ
+    Σ = implied(model).Σ
     Σₒ = SEM.obs_cov(observed(model))
     if !isposdef(Σ)
         return Inf
@@ -175,12 +175,12 @@ function SEM.objective(ml::UserSemML, model::AbstractSem, params)
 end
 
 # models
-model_g1 = Sem(specification = specification_g1, data = dat_g1, imply = RAMSymbolic)
+model_g1 = Sem(specification = specification_g1, data = dat_g1, implied = RAMSymbolic)
 
 model_g2 = SemFiniteDiff(
     specification = specification_g2,
     data = dat_g2,
-    imply = RAMSymbolic,
+    implied = RAMSymbolic,
     loss = UserSemML(),
 )
 
@@ -207,10 +207,10 @@ end
 ############################################################################################
 
 model_ls_g1 =
-    Sem(specification = specification_g1, data = dat_g1, imply = RAMSymbolic, loss = SemWLS)
+    Sem(specification = specification_g1, data = dat_g1, implied = RAMSymbolic, loss = SemWLS)
 
 model_ls_g2 =
-    Sem(specification = specification_g2, data = dat_g2, imply = RAMSymbolic, loss = SemWLS)
+    Sem(specification = specification_g2, data = dat_g2, implied = RAMSymbolic, loss = SemWLS)
 
 model_ls_multigroup = SemEnsemble(model_ls_g1, model_ls_g2; optimizer = semoptimizer)
 
@@ -260,7 +260,7 @@ if !isnothing(specification_miss_g1)
         observed = SemObservedMissing,
         loss = SemFIML,
         data = dat_miss_g1,
-        imply = RAM,
+        implied = RAM,
         optimizer = SemOptimizerEmpty(),
         meanstructure = true,
     )
@@ -270,7 +270,7 @@ if !isnothing(specification_miss_g1)
         observed = SemObservedMissing,
         loss = SemFIML,
         data = dat_miss_g2,
-        imply = RAM,
+        implied = RAM,
         optimizer = SemOptimizerEmpty(),
         meanstructure = true,
     )

@@ -4,17 +4,17 @@
 "Most abstract supertype for all SEMs"
 abstract type AbstractSem end
 
-"Supertype for all single SEMs, e.g. SEMs that have at least the fields `observed`, `imply`, `loss`"
+"Supertype for all single SEMs, e.g. SEMs that have at least the fields `observed`, `implied`, `loss`"
 abstract type AbstractSemSingle{O, I, L} <: AbstractSem end
 
 "Supertype for all collections of multiple SEMs"
 abstract type AbstractSemCollection <: AbstractSem end
 
-"Meanstructure trait for `SemImply` subtypes"
+"Meanstructure trait for `SemImplied` subtypes"
 abstract type MeanStruct end
-"Indicates that `SemImply` subtype supports mean structure"
+"Indicates that `SemImplied` subtype supports mean structure"
 struct HasMeanStruct <: MeanStruct end
-"Indicates that `SemImply` subtype does not support mean structure"
+"Indicates that `SemImplied` subtype does not support mean structure"
 struct NoMeanStruct <: MeanStruct end
 
 # default implementation
@@ -24,7 +24,7 @@ MeanStruct(::Type{T}) where {T} =
 
 MeanStruct(semobj) = MeanStruct(typeof(semobj))
 
-"Hessian Evaluation trait for `SemImply` and `SemLossFunction` subtypes"
+"Hessian Evaluation trait for `SemImplied` and `SemLossFunction` subtypes"
 abstract type HessianEval end
 struct ApproxHessian <: HessianEval end
 struct ExactHessian <: HessianEval end
@@ -105,36 +105,36 @@ If you have a special kind of data, e.g. ordinal data, you should implement a su
 abstract type SemObserved end
 
 """
-Supertype of all objects that can serve as the imply field of a SEM.
+Supertype of all objects that can serve as the implied field of a SEM.
 Computed model-implied values that should be compared with the observed data to find parameter estimates,
 e. g. the model implied covariance or mean.
-If you would like to implement a different notation, e.g. LISREL, you should implement a subtype of SemImply.
+If you would like to implement a different notation, e.g. LISREL, you should implement a subtype of SemImplied.
 """
-abstract type SemImply end
+abstract type SemImplied end
 
-"Subtype of SemImply for all objects that can serve as the imply field of a SEM and use some form of symbolic precomputation."
-abstract type SemImplySymbolic <: SemImply end
+"Subtype of SemImplied for all objects that can serve as the implied field of a SEM and use some form of symbolic precomputation."
+abstract type SemImpliedSymbolic <: SemImplied end
 
 """
-    Sem(;observed = SemObservedData, imply = RAM, loss = SemML, kwargs...)
+    Sem(;observed = SemObservedData, implied = RAM, loss = SemML, kwargs...)
 
 Constructor for the basic `Sem` type.
-All additional kwargs are passed down to the constructors for the observed, imply, and loss fields.
+All additional kwargs are passed down to the constructors for the observed, implied, and loss fields.
 
 # Arguments
 - `observed`: object of subtype `SemObserved` or a constructor.
-- `imply`: object of subtype `SemImply` or a constructor.
+- `implied`: object of subtype `SemImplied` or a constructor.
 - `loss`: object of subtype `SemLossFunction`s or constructor; or a tuple of such.
 
 Returns a Sem with fields
 - `observed::SemObserved`: Stores observed data, sample statistics, etc. See also [`SemObserved`](@ref).
-- `imply::SemImply`: Computes model implied statistics, like Σ, μ, etc. See also [`SemImply`](@ref).
+- `implied::SemImplied`: Computes model implied statistics, like Σ, μ, etc. See also [`SemImplied`](@ref).
 - `loss::SemLoss`: Computes the objective and gradient of a sum of loss functions. See also [`SemLoss`](@ref).
 """
-mutable struct Sem{O <: SemObserved, I <: SemImply, L <: SemLoss} <:
+mutable struct Sem{O <: SemObserved, I <: SemImplied, L <: SemLoss} <:
                AbstractSemSingle{O, I, L}
     observed::O
-    imply::I
+    implied::I
     loss::L
 end
 
@@ -142,25 +142,25 @@ end
 # automatic differentiation
 ############################################################################################
 """
-    SemFiniteDiff(;observed = SemObservedData, imply = RAM, loss = SemML, kwargs...)
+    SemFiniteDiff(;observed = SemObservedData, implied = RAM, loss = SemML, kwargs...)
 
 A wrapper around [`Sem`](@ref) that substitutes dedicated evaluation of gradient and hessian with
 finite difference approximation.
 
 # Arguments
 - `observed`: object of subtype `SemObserved` or a constructor.
-- `imply`: object of subtype `SemImply` or a constructor.
+- `implied`: object of subtype `SemImplied` or a constructor.
 - `loss`: object of subtype `SemLossFunction`s or constructor; or a tuple of such.
 
 Returns a Sem with fields
 - `observed::SemObserved`: Stores observed data, sample statistics, etc. See also [`SemObserved`](@ref).
-- `imply::SemImply`: Computes model implied statistics, like Σ, μ, etc. See also [`SemImply`](@ref).
+- `implied::SemImplied`: Computes model implied statistics, like Σ, μ, etc. See also [`SemImplied`](@ref).
 - `loss::SemLoss`: Computes the objective and gradient of a sum of loss functions. See also [`SemLoss`](@ref).
 """
-struct SemFiniteDiff{O <: SemObserved, I <: SemImply, L <: SemLoss} <:
+struct SemFiniteDiff{O <: SemObserved, I <: SemImplied, L <: SemLoss} <:
        AbstractSemSingle{O, I, L}
     observed::O
-    imply::I
+    implied::I
     loss::L
 end
 

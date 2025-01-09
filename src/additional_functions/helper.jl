@@ -21,14 +21,14 @@ function make_onelement_array(A)
 end
  =#
 
-function semvec(observed, imply, loss, optimizer)
+function semvec(observed, implied, loss, optimizer)
     observed = make_onelement_array(observed)
-    imply = make_onelement_array(imply)
+    implied = make_onelement_array(implied)
     loss = make_onelement_array(loss)
     optimizer = make_onelement_array(optimizer)
 
-    #sem_vec = Array{AbstractSem}(undef, maximum(length.([observed, imply, loss, optimizer])))
-    sem_vec = Sem.(observed, imply, loss, optimizer)
+    #sem_vec = Array{AbstractSem}(undef, maximum(length.([observed, implied, loss, optimizer])))
+    sem_vec = Sem.(observed, implied, loss, optimizer)
 
     return sem_vec
 end

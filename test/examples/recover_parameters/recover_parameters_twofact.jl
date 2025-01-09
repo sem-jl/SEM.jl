@@ -53,11 +53,11 @@ start = [
     repeat([0.5], 4)
 ]
 
-imply_ml = RAMSymbolic(; specification = ram_matrices, start_val = start)
+implied_ml = RAMSymbolic(; specification = ram_matrices, start_val = start)
 
-imply_ml.Σ_function(imply_ml.Σ, true_val)
+implied_ml.Σ_function(implied_ml.Σ, true_val)
 
-true_dist = MultivariateNormal(imply_ml.Σ)
+true_dist = MultivariateNormal(implied_ml.Σ)
 
 Random.seed!(1234)
 x = transpose(rand(true_dist, 100_000))
@@ -65,7 +65,7 @@ semobserved = SemObservedData(data = x, specification = nothing)
 
 loss_ml = SemLoss(SemML(; observed = semobserved, nparams = length(start)))
 
-model_ml = Sem(semobserved, imply_ml, loss_ml)
+model_ml = Sem(semobserved, implied_ml, loss_ml)
 objective!(model_ml, true_val)
 
 optimizer = SemOptimizerOptim(

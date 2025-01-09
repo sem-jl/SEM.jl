@@ -2,19 +2,19 @@
 ### Types
 ############################################################################################
 """
-Empty placeholder for models that don't need an imply part.
+Empty placeholder for models that don't need an implied part.
 (For example, models that only regularize parameters.)
 
 # Constructor
 
-    ImplyEmpty(;specification, kwargs...)
+    ImpliedEmpty(;specification, kwargs...)
 
 # Arguments
 - `specification`: either a `RAMMatrices` or `ParameterTable` object
 
 # Examples
 A multigroup model with ridge regularization could be specified as a `SemEnsemble` with one
-model per group and an additional model with `ImplyEmpty` and `SemRidge` for the regularization part.
+model per group and an additional model with `ImpliedEmpty` and `SemRidge` for the regularization part.
 
 # Extended help
 
@@ -23,9 +23,9 @@ model per group and an additional model with `ImplyEmpty` and `SemRidge` for the
 - `nparams(::RAMSymbolic)` -> Number of parameters
 
 ## Implementation
-Subtype of `SemImply`.
+Subtype of `SemImplied`.
 """
-struct ImplyEmpty{V2} <: SemImply
+struct ImpliedEmpty{V2} <: SemImplied
     hessianeval::ExactHessian
     meanstruct::NoMeanStruct
     ram_matrices::V2
@@ -35,18 +35,18 @@ end
 ### Constructors
 ############################################################################################
 
-function ImplyEmpty(; specification, kwargs...)
-    return ImplyEmpty(hessianeval, meanstruct, convert(RAMMatrices, specification))
+function ImpliedEmpty(; specification, kwargs...)
+    return ImpliedEmpty(hessianeval, meanstruct, convert(RAMMatrices, specification))
 end
 
 ############################################################################################
 ### methods
 ############################################################################################
 
-update!(targets::EvaluationTargets, imply::ImplyEmpty, par, model) = nothing
+update!(targets::EvaluationTargets, implied::ImpliedEmpty, par, model) = nothing
 
 ############################################################################################
 ### Recommended methods
 ############################################################################################
 
-update_observed(imply::ImplyEmpty, observed::SemObserved; kwargs...) = imply
+update_observed(implied::ImpliedEmpty, observed::SemObserved; kwargs...) = implied

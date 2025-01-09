@@ -32,7 +32,7 @@ makedocs(
         "Developer documentation" => [
             "Extending the package" => "developer/extending.md",
             "Custom loss functions" => "developer/loss.md",
-            "Custom imply types" => "developer/imply.md",
+            "Custom implied types" => "developer/implied.md",
             "Custom optimizer types" => "developer/optimizer.md",
             "Custom observed types" => "developer/observed.md",
             "Custom model types" => "developer/sem.md",

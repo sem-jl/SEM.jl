@@ -93,7 +93,7 @@ function evaluate!(
     gradient,
     hessian,
     semfiml::SemFIML,
-    implied::SemImply,
+    implied::SemImplied,
     model::AbstractSemSingle,
     params,
 )
@@ -148,20 +148,20 @@ function ∇F_one_pattern(μ_diff, Σ⁻¹, S, obs_mask, ∇ind, N, Jμ, JΣ, mo
     end
 end
 
-function ∇F_fiml_outer!(G, JΣ, Jμ, imply::SemImplySymbolic, model, semfiml)
-    mul!(G, imply.∇Σ', JΣ) # should be transposed
-    mul!(G, imply.∇μ', Jμ, -1, 1)
+function ∇F_fiml_outer!(G, JΣ, Jμ, implied::SemImpliedSymbolic, model, semfiml)
+    mul!(G, implied.∇Σ', JΣ) # should be transposed
+    mul!(G, implied.∇μ', Jμ, -1, 1)
 end
 
-function ∇F_fiml_outer!(G, JΣ, Jμ, imply, model, semfiml)
-    Iₙ = sparse(1.0I, size(imply.A)...)
-    P = kron(imply.F⨉I_A⁻¹, imply.F⨉I_A⁻¹)
-    Q = kron(imply.S * imply.I_A⁻¹', Iₙ)
+function ∇F_fiml_outer!(G, JΣ, Jμ, implied, model, semfiml)
+    Iₙ = sparse(1.0I, size(implied.A)...)
+    P = kron(implied.F⨉I_A⁻¹, implied.F⨉I_A⁻¹)
+    Q = kron(implied.S * implied.I_A⁻¹', Iₙ)
     Q .+= semfiml.commutator * Q
 
-    ∇Σ = P * (imply.∇S + Q * imply.∇A)
+    ∇Σ = P * (implied.∇S + Q * implied.∇A)
 
-    ∇μ = imply.F⨉I_A⁻¹ * imply.∇M + kron((imply.I_A⁻¹ * imply.M)', imply.F⨉I_A⁻¹) * imply.∇A
+    ∇μ = implied.F⨉I_A⁻¹ * implied.∇M + kron((implied.I_A⁻¹ * implied.M)', implied.F⨉I_A⁻¹) * implied.∇A
 
     mul!(G, ∇Σ', JΣ) # actually transposed
     mul!(G, ∇μ', Jμ, -1, 1)
@@ -198,7 +198,7 @@ function ∇F_FIML!(G, observed::SemObservedMissing, semfiml, model)
             model,
         )
     end
-    return ∇F_fiml_outer!(G, JΣ, Jμ, imply(model), model, semfiml)
+    return ∇F_fiml_outer!(G, JΣ, Jμ, implied(model), model, semfiml)
 end
 
 function prepare_SemFIML!(semfiml, model)
@@ -212,8 +212,8 @@ function prepare_SemFIML!(semfiml, model)
 end
 
 function copy_per_pattern!(fiml::SemFIML, model::AbstractSem)
-    Σ = imply(model).Σ
-    μ = imply(model).μ
+    Σ = implied(model).Σ
+    μ = implied(model).μ
     data = observed(model)
     @inbounds @views for (i, pat) in enumerate(data.patterns)
         fiml.inverses[i] .= Σ[pat.measured_mask, pat.measured_mask]
@@ -230,7 +230,7 @@ function batch_cholesky!(semfiml, model)
 end
 
 function check_fiml(semfiml, model)
-    copyto!(semfiml.imp_inv, imply(model).Σ)
+    copyto!(semfiml.imp_inv, implied(model).Σ)
     a = cholesky!(Symmetric(semfiml.imp_inv); check = false)
     return isposdef(a)
 end

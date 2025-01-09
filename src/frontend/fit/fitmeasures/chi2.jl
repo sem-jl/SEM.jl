@@ -13,7 +13,7 @@ function χ² end
 χ²(sem_fit::SemFit{Mi, So, St, Mo, O} where {Mi, So, St, Mo <: AbstractSemSingle, O}) = χ²(
     sem_fit,
     sem_fit.model.observed,
-    sem_fit.model.imply,
+    sem_fit.model.implied,
     sem_fit.model.loss.functions...,
 )
 

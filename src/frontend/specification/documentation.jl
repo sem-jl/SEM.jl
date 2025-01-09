@@ -1,10 +1,3 @@
-"""
-    params(semobj) -> Vector{Symbol}
-
-Return the vector of SEM model parameter identifiers.
-"""
-function params end
-
 params(spec::SemSpecification) = spec.params
 
 """

@@ -2,7 +2,7 @@
 ### Types
 ############################################################################################
 @doc raw"""
-Subtype of `SemImply` that implements the RAM notation with symbolic precomputation.
+Subtype of `SemImplied` that implements the RAM notation with symbolic precomputation.
 
 # Constructor
 
@@ -26,7 +26,7 @@ Subtype of `SemImply` that implements the RAM notation with symbolic precomputat
 # Extended help
 
 ## Implementation
-Subtype of `SemImply`.
+Subtype of `SemImplied`.
 
 ## Interfaces
 - `params(::RAMSymbolic) `-> vector of parameter ids
@@ -63,7 +63,7 @@ and for models with a meanstructure, the model implied means are computed as
 ```
 """
 struct RAMSymbolic{MS, F1, F2, F3, A1, A2, A3, S1, S2, S3, V2, F4, A4, F5, A5} <:
-       SemImplySymbolic
+       SemImpliedSymbolic
     meanstruct::MS
     hessianeval::ExactHessian
     Σ_function::F1
@@ -201,19 +201,19 @@ end
 
 function update!(
     targets::EvaluationTargets,
-    imply::RAMSymbolic,
+    implied::RAMSymbolic,
     model::AbstractSemSingle,
     par,
 )
-    imply.Σ_function(imply.Σ, par)
-    if MeanStruct(imply) === HasMeanStruct
-        imply.μ_function(imply.μ, par)
+    implied.Σ_function(implied.Σ, par)
+    if MeanStruct(implied) === HasMeanStruct
+        implied.μ_function(implied.μ, par)
     end
 
     if is_gradient_required(targets) || is_hessian_required(targets)
-        imply.∇Σ_function(imply.∇Σ, par)
-        if MeanStruct(imply) === HasMeanStruct
-            imply.∇μ_function(imply.∇μ, par)
+        implied.∇Σ_function(implied.∇Σ, par)
+        if MeanStruct(implied) === HasMeanStruct
+            implied.∇μ_function(implied.∇μ, par)
         end
     end
 end
@@ -222,9 +222,9 @@ end
 ### Recommended methods
 ############################################################################################
 
-function update_observed(imply::RAMSymbolic, observed::SemObserved; kwargs...)
-    if nobserved_vars(observed) == size(imply.Σ, 1)
-        return imply
+function update_observed(implied::RAMSymbolic, observed::SemObserved; kwargs...)
+    if nobserved_vars(observed) == size(implied.Σ, 1)
+        return implied
     else
         return RAMSymbolic(; observed = observed, kwargs...)
     end

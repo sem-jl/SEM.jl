@@ -15,13 +15,13 @@ Structural Equation Model
    SemML
 - Fields
    observed:  SemObservedCommon
-   imply:     RAM
+   implied:     RAM
    optimizer: SemOptimizerOptim
 ```
 
-The output of this call tells you exactly what model you just constructed (i.e. what the loss functions, observed, imply and optimizer parts are).
+The output of this call tells you exactly what model you just constructed (i.e. what the loss functions, observed, implied and optimizer parts are).
 
-As you can see, by default, we use maximum likelihood estimation, the RAM imply type and the `Optim.jl` optimization backend. 
+As you can see, by default, we use maximum likelihood estimation, the RAM implied type and the `Optim.jl` optimization backend.
 To choose something different, you can provide it as a keyword argument:
 
 ```julia
@@ -29,7 +29,7 @@ model = Sem(
     specification = partable,
     data = data,
     observed = ...,
-    imply = ...,
+    implied = ...,
     loss = ...,
     optimizer = ...
 )
@@ -41,7 +41,7 @@ For example, to construct a model for weighted least squares estimation that use
 model = Sem(
     specification = partable,
     data = data,
-    imply = RAMSymbolic,
+    implied = RAMSymbolic,
     loss = SemWLS,
     optimizer = SemOptimizerNLopt
 )
@@ -73,7 +73,7 @@ W = ...
 model = Sem(
     specification = partable,
     data = data,
-    imply = RAMSymbolic,
+    implied = RAMSymbolic,
     loss = SemWLS,
     wls_weight_matrix = W
 )

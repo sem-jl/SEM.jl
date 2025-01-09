@@ -5,74 +5,72 @@
 function Sem(;
     specification = ParameterTable,
     observed::O = SemObservedData,
-    imply::I = RAM,
+    implied::I = RAM,
     loss::L = SemML,
     kwargs...,
 ) where {O, I, L}
     kwdict = Dict{Symbol, Any}(kwargs...)
 
-    set_field_type_kwargs!(kwdict, observed, imply, loss, O, I)
+    set_field_type_kwargs!(kwdict, observed, implied, loss, O, I)
 
-    observed, imply, loss = get_fields!(kwdict, specification, observed, imply, loss)
+    observed, implied, loss = get_fields!(kwdict, specification, observed, implied, loss)
 
-    sem = Sem(observed, imply, loss)
+    sem = Sem(observed, implied, loss)
 
     return sem
 end
 
-nvars(sem::AbstractSemSingle) = nvars(sem.imply)
-nobserved_vars(sem::AbstractSemSingle) = nobserved_vars(sem.imply)
-nlatent_vars(sem::AbstractSemSingle) = nlatent_vars(sem.imply)
+"""
+    implied(model::AbstractSemSingle) -> SemImplied
 
-vars(sem::AbstractSemSingle) = vars(sem.imply)
-observed_vars(sem::AbstractSemSingle) = observed_vars(sem.imply)
-latent_vars(sem::AbstractSemSingle) = latent_vars(sem.imply)
+Returns the [*implied*](@ref SemImplied) part of a model.
+"""
+implied(model::AbstractSemSingle) = model.implied
 
-nsamples(sem::AbstractSemSingle) = nsamples(sem.observed)
+nvars(model::AbstractSemSingle) = nvars(implied(model))
+nobserved_vars(model::AbstractSemSingle) = nobserved_vars(implied(model))
+nlatent_vars(model::AbstractSemSingle) = nlatent_vars(implied(model))
 
-params(model::AbstractSem) = params(model.imply)
+vars(model::AbstractSemSingle) = vars(implied(model))
+observed_vars(model::AbstractSemSingle) = observed_vars(implied(model))
+latent_vars(model::AbstractSemSingle) = latent_vars(implied(model))
 
-# sum of samples in all sub-models
-nsamples(ensemble::SemEnsemble) = sum(nsamples, ensemble.sems)
+params(model::AbstractSemSingle) = params(implied(model))
+nparams(model::AbstractSemSingle) = nparams(implied(model))
 
-############################################################################################
-# additional methods
-############################################################################################
 """
     observed(model::AbstractSemSingle) -> SemObserved
 
-Returns the observed part of a model.
+Returns the [*observed*](@ref SemObserved) part of a model.
 """
 observed(model::AbstractSemSingle) = model.observed
 
-"""
-    imply(model::AbstractSemSingle) -> SemImply
-
-Returns the imply part of a model.
-"""
-imply(model::AbstractSemSingle) = model.imply
+nsamples(model::AbstractSemSingle) = nsamples(observed(model))
 
 """
     loss(model::AbstractSemSingle) -> SemLoss
 
-Returns the loss part of a model.
+Returns the [*loss*](@ref SemLoss) function of a model.
 """
 loss(model::AbstractSemSingle) = model.loss
+
+# sum of samples in all sub-models
+nsamples(ensemble::SemEnsemble) = sum(nsamples, ensemble.sems)
 
 function SemFiniteDiff(;
     specification = ParameterTable,
     observed::O = SemObservedData,
-    imply::I = RAM,
+    implied::I = RAM,
     loss::L = SemML,
     kwargs...,
 ) where {O, I, L}
     kwdict = Dict{Symbol, Any}(kwargs...)
 
-    set_field_type_kwargs!(kwdict, observed, imply, loss, O, I)
+    set_field_type_kwargs!(kwdict, observed, implied, loss, O, I)
 
-    observed, imply, loss = get_fields!(kwdict, specification, observed, imply, loss)
+    observed, implied, loss = get_fields!(kwdict, specification, observed, implied, loss)
 
-    sem = SemFiniteDiff(observed, imply, loss)
+    sem = SemFiniteDiff(observed, implied, loss)
 
     return sem
 end
@@ -81,9 +79,9 @@ end
 # functions
 ############################################################################################
 
-function set_field_type_kwargs!(kwargs, observed, imply, loss, O, I)
+function set_field_type_kwargs!(kwargs, observed, implied, loss, O, I)
     kwargs[:observed_type] = O <: Type ? observed : typeof(observed)
-    kwargs[:imply_type] = I <: Type ? imply : typeof(imply)
+    kwargs[:implied_type] = I <: Type ? implied : typeof(implied)
     if loss isa SemLoss
         kwargs[:loss_types] = [
             lossfun isa SemLossFunction ? typeof(lossfun) : lossfun for
@@ -98,7 +96,7 @@ function set_field_type_kwargs!(kwargs, observed, imply, loss, O, I)
 end
 
 # construct Sem fields
-function get_fields!(kwargs, specification, observed, imply, loss)
+function get_fields!(kwargs, specification, observed, implied, loss)
     if !isa(specification, SemSpecification)
         specification = specification(; kwargs...)
     end
@@ -109,19 +107,19 @@ function get_fields!(kwargs, specification, observed, imply, loss)
     end
     kwargs[:observed] = observed
 
-    # imply
-    if !isa(imply, SemImply)
-        imply = imply(; specification, kwargs...)
+    # implied
+    if !isa(implied, SemImplied)
+        implied = implied(; specification, kwargs...)
     end
 
-    kwargs[:imply] = imply
-    kwargs[:nparams] = nparams(imply)
+    kwargs[:implied] = implied
+    kwargs[:nparams] = nparams(implied)
 
     # loss
     loss = get_SemLoss(loss; specification, kwargs...)
     kwargs[:loss] = loss
 
-    return observed, imply, loss
+    return observed, implied, loss
 end
 
 # construct loss field
@@ -166,7 +164,7 @@ function Base.show(io::IO, sem::Sem{O, I, L}) where {O, I, L}
     print(io, lossfuntypes...)
     print(io, "- Fields \n")
     print(io, "   observed:    $(nameof(O)) \n")
-    print(io, "   imply:       $(nameof(I)) \n")
+    print(io, "   implied:     $(nameof(I)) \n")
 end
 
 function Base.show(io::IO, sem::SemFiniteDiff{O, I, L}) where {O, I, L}
@@ -177,7 +175,7 @@ function Base.show(io::IO, sem::SemFiniteDiff{O, I, L}) where {O, I, L}
     print(io, lossfuntypes...)
     print(io, "- Fields \n")
     print(io, "   observed:    $(nameof(O)) \n")
-    print(io, "   imply:       $(nameof(I)) \n")
+    print(io, "   implied:     $(nameof(I)) \n")
 end
 
 function Base.show(io::IO, loss::SemLoss)

@@ -171,7 +171,7 @@ function MyLoss(;arg1 = ..., arg2, kwargs...)
 end
 ```
 
-All keyword arguments that a user passes to the Sem constructor are passed to your loss function. In addition, all previously constructed parts of the model (imply and observed part) are passed as keyword arguments as well as the number of parameters `n_par = ...`, so your constructor may depend on those. For example, the constructor for `SemML` in our package depends on the additional argument `meanstructure` as well as the observed part of the model to pre-allocate arrays of the same size as the observed covariance matrix and the observed mean vector: 
+All keyword arguments that a user passes to the Sem constructor are passed to your loss function. In addition, all previously constructed parts of the model (implied and observed part) are passed as keyword arguments as well as the number of parameters `n_par = ...`, so your constructor may depend on those. For example, the constructor for `SemML` in our package depends on the additional argument `meanstructure` as well as the observed part of the model to pre-allocate arrays of the same size as the observed covariance matrix and the observed mean vector:
 
 ```julia
 function SemML(;observed, meanstructure = false, approx_H = false, kwargs...)
@@ -221,9 +221,9 @@ To keep it simple, we only cover models without a meanstructure. The maximum lik
 F_{ML} = \log \det \Sigma_i + \mathrm{tr}\left(\Sigma_{i}^{-1} \Sigma_o \right)
 ```
 
-where ``\Sigma_i`` is the model implied covariance matrix and ``\Sigma_o`` is the observed covariance matrix. We can query the model implied covariance matrix from the `imply` par of our model, and the observed covariance matrix from the `observed` path of our model.
+where ``\Sigma_i`` is the model implied covariance matrix and ``\Sigma_o`` is the observed covariance matrix. We can query the model implied covariance matrix from the `implied` par of our model, and the observed covariance matrix from the `observed` path of our model.
 
-To get information on what we can access from a certain `imply` or `observed` type, we can check it`s documentation an the pages [API - model parts](@ref) or via the help mode of the REPL:
+To get information on what we can access from a certain `implied` or `observed` type, we can check it`s documentation an the pages [API - model parts](@ref) or via the help mode of the REPL:
 
 ```julia
 julia>?
@@ -233,7 +233,7 @@ help?> RAM
 help?> SemObservedCommon
 ```
 
-We see that the model implied covariance matrix can be assessed as `Σ(imply)` and the observed covariance matrix as `obs_cov(observed)`.
+We see that the model implied covariance matrix can be assessed as `Σ(implied)` and the observed covariance matrix as `obs_cov(observed)`.
 
 With this information, we write can implement maximum likelihood optimization as
 
@@ -245,7 +245,7 @@ import StructuralEquationModels: Σ, obs_cov, objective!
 
 function objective!(semml::MaximumLikelihood, parameters, model::AbstractSem)
     # access the model implied and observed covariance matrices
-    Σᵢ = Σ(imply(model))
+    Σᵢ = Σ(implied(model))
     Σₒ = obs_cov(observed(model))
     # compute the objective
     if isposdef(Symmetric(Σᵢ)) # is the model implied covariance matrix positive definite?

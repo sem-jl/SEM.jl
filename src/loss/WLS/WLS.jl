@@ -104,7 +104,7 @@ function evaluate!(
     gradient,
     hessian,
     semwls::SemWLS,
-    implied::SemImplySymbolic,
+    implied::SemImpliedSymbolic,
     model::AbstractSemSingle,
     par,
 )
