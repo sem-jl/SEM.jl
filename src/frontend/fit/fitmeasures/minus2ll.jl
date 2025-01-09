@@ -12,25 +12,25 @@ function minus2ll end
 minus2ll(fit::SemFit) = minus2ll(fit, fit.model)
 
 function minus2ll(fit::SemFit, model::AbstractSemSingle)
-    minimum = objective!(model, fit.solution)
+    minimum = objective(model, fit.solution)
     return minus2ll(minimum, model)
 end
 
 minus2ll(minimum::Number, model::AbstractSemSingle) =
-    sum(loss -> minus2ll(minimum, model, loss), model.loss.functions)
+    sum(lossfun -> minus2ll(lossfun, minimum, model), model.loss.functions)
 
 # SemML ------------------------------------------------------------------------------------
-function minus2ll(minimum::Number, model::AbstractSemSingle, loss_ml::SemML)
+function minus2ll(lossfun::SemML, minimum::Number, model::AbstractSemSingle)
     obs = observed(model)
     return nsamples(obs) * (minimum + log(2π) * nobserved_vars(obs))
 end
 
 # WLS --------------------------------------------------------------------------------------
-minus2ll(minimum::Number, model::AbstractSemSingle, loss_ml::SemWLS) = missing
+minus2ll(lossfun::SemWLS, minimum::Number, model::AbstractSemSingle) = missing
 
 # compute likelihood for missing data - H0 -------------------------------------------------
 # -2ll = (∑ log(2π)*(nᵢ + mᵢ)) + F*n
-function minus2ll(minimum::Number, observed, model::AbstractSemSingle, loss_ml::SemFIML)
+function minus2ll(lossfun::SemFIML, minimum::Number, model::AbstractSemSingle)
     obs = observed(model)::SemObservedMissing
     F = minimum * nsamples(obs)
     F += log(2π) * sum(pat -> nsamples(pat) * nmeasured_vars(pat), obs.patterns)
@@ -47,15 +47,20 @@ function minus2ll(observed::SemObservedMissing)
     Σ = observed.em_model.Σ
     μ = observed.em_model.μ
 
+    # FIXME: this code is duplicate to objective(fiml, ...)
     F = sum(observed.patterns) do pat
         # implied covariance/mean
         Σᵢ = Σ[pat.measured_mask, pat.measured_mask]
         Σᵢ_chol = cholesky!(Σᵢ)
         ld = logdet(Σᵢ_chol)
         Σᵢ⁻¹ = LinearAlgebra.inv!(Σᵢ_chol)
-        meandiffᵢ = pat.measured_mean - μ[pat.measured_mask]
+        μ_diffᵢ = pat.measured_mean - μ[pat.measured_mask]
 
-        F_one_pattern(meandiffᵢ, Σᵢ⁻¹, pat.measured_cov, ld, nsamples(pat))
+        F_pat = ld + dot(μ_diffᵢ, Σᵢ⁻¹, μ_diffᵢ)
+        if nsamples(pat) > 1
+            F_pat += dot(pat.measured_cov, Σᵢ⁻¹)
+        end
+        F_pat
     end
 
     F += log(2π) * sum(pat -> nsamples(pat) * nmeasured_vars(pat), observed.patterns)
