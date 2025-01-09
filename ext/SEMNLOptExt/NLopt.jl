@@ -206,8 +206,8 @@ end
 ############################################################################################
 
 function Base.show(io::IO, result::NLoptResult)
-    print(io, "Optimizer status: $(result.result[3]) \n")
-    print(io, "Minimum:          $(round(result.result[1]; digits = 2)) \n")
-    print(io, "Algorithm:        $(result.problem.algorithm) \n")
-    print(io, "No. evaluations:  $(result.problem.numevals) \n")
+    print(io,   "Optimizer status: $(result.result[3]) \n")
+    @printf(io, "Minimum:          %.4g\n", result.result[1])
+    print(io,   "Algorithm:        $(result.problem.algorithm) \n")
+    print(io,   "No. evaluations:  $(result.problem.numevals) \n")
 end

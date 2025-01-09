@@ -3,7 +3,7 @@ Type alias for [`SemObservedData`](@ref) that has mean and covariance, but no ac
 
 For instances of `SemObservedCovariance` [`samples`](@ref) returns `nothing`.
 """
-const SemObservedCovariance{S} = SemObservedData{Nothing, S}
+const SemObservedCovariance{C, S} = SemObservedData{Nothing, C, S}
 
 """
     SemObservedCovariance(;
@@ -76,5 +76,5 @@ function SemObservedCovariance(;
         obs_mean = obs_mean[obs_vars_perm]
     end
 
-    return SemObservedData(nothing, obs_vars, obs_cov, obs_mean, nsamples)
+    return SemObservedData(nothing, obs_vars, Symmetric(obs_cov), obs_mean, nsamples)
 end

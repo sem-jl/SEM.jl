@@ -8,9 +8,8 @@ Weighted least squares estimation.
 
 # Constructor
 
-    SemWLS(;
-        observed,
-        meanstructure = false,
+    SemWLS(
+        observed::SemObserved, implied::SemImplied;
         wls_weight_matrix = nothing,
         wls_weight_matrix_mean = nothing,
         approximate_hessian = false,
@@ -18,7 +17,7 @@ Weighted least squares estimation.
 
 # Arguments
 - `observed`: the `SemObserved` part of the model
-- `meanstructure::Bool`: does the model have a meanstructure?
+- `implied`: the `SemImplied` part of the model
 - `approximate_hessian::Bool`: should the hessian be swapped for an approximation
 - `wls_weight_matrix`: the weight matrix for weighted least squares.
     Defaults to GLS estimation (``0.5*(D^T*kron(S,S)*D)`` where D is the duplication matrix
@@ -28,7 +27,7 @@ Weighted least squares estimation.
 
 # Examples
 ```julia
-my_wls = SemWLS(observed = my_observed)
+my_wls = SemWLS(my_observed, my_implied)
 ```
 
 # Interfaces
@@ -38,31 +37,48 @@ Analytic gradients are available, and for models without a meanstructure, also a
 ## Implementation
 Subtype of `SemLossFunction`.
 """
-struct SemWLS{HE <: HessianEval, Vt, St, C} <: SemLossFunction
+struct SemWLS{O, I, HE <: HessianEval, Vt, St, C} <: SemLoss{O, I}
+    observed::O
+    implied::I
+
     hessianeval::HE
     V::Vt
     σₒ::St
     V_μ::C
+
+    SemWLS(observed, implied, ::Type{HE}, args...) where {HE <: HessianEval} =
+        new{typeof(observed), typeof(implied), HE, map(typeof, args)...}(
+            observed,
+            implied,
+            HE(),
+            args...,
+        )
 end
 
 ############################################################################################
 ### Constructors
 ############################################################################################
 
-SemWLS{HE}(args...) where {HE <: HessianEval} =
-    SemWLS{HE, map(typeof, args)...}(HE(), args...)
-
-function SemWLS(;
-    observed,
-    wls_weight_matrix = nothing,
-    wls_weight_matrix_mean = nothing,
-    approximate_hessian = false,
-    meanstructure = false,
+function SemWLS(
+    observed::SemObserved,
+    implied::SemImplied;
+    wls_weight_matrix::Union{AbstractMatrix, Nothing} = nothing,
+    wls_weight_matrix_mean::Union{AbstractMatrix, Nothing} = nothing,
+    approximate_hessian::Bool = false,
     kwargs...,
 )
+    # check integrity
+    check_observed_vars(observed, implied)
+
     nobs_vars = nobserved_vars(observed)
-    tril_ind = filter(x -> (x[1] >= x[2]), CartesianIndices(obs_cov(observed)))
-    s = obs_cov(observed)[tril_ind]
+    s = vech(obs_cov(observed))
+    size(s) == size(implied.Σ) || throw(
+        DimensionMismatch(
+            "SemWLS requires implied covariance to be in vech-ed form " *
+            "(vectorized lower triangular part of Σ matrix): $(size(s)) expected, $(size(implied.Σ)) found.\n" *
+            "$(nameof(typeof(implied))) must be constructed with vech=true.",
+        ),
+    )
 
     # compute V here
     if isnothing(wls_weight_matrix)
@@ -76,15 +92,17 @@ function SemWLS(;
                 "wls_weight_matrix has to be of size $(length(tril_ind))×$(length(tril_ind))",
             )
     end
+    size(wls_weight_matrix) == (length(s), length(s)) ||
+        DimensionMismatch("wls_weight_matrix has to be of size $(length(s))×$(length(s))")
 
-    if meanstructure
+    if MeanStruct(implied) == HasMeanStruct
         if isnothing(wls_weight_matrix_mean)
+            @info "Computing WLS weight matrix for the meanstructure using obs_cov()"
             wls_weight_matrix_mean = inv(obs_cov(observed))
-        else
-            size(wls_weight_matrix_mean) == (nobs_vars, nobs_vars) || DimensionMismatch(
-                "wls_weight_matrix_mean has to be of size $(nobs_vars)×$(nobs_vars)",
-            )
         end
+        size(wls_weight_matrix_mean) == (nobs_vars, nobs_vars) || DimensionMismatch(
+            "wls_weight_matrix_mean has to be of size $(nobs_vars)×$(nobs_vars)",
+        )
     else
         isnothing(wls_weight_matrix_mean) ||
             @warn "Ignoring wls_weight_matrix_mean since meanstructure is disabled"
@@ -92,31 +110,25 @@ function SemWLS(;
     end
     HE = approximate_hessian ? ApproxHessian : ExactHessian
 
-    return SemWLS{HE}(wls_weight_matrix, s, wls_weight_matrix_mean)
+    return SemWLS(observed, implied, HE, wls_weight_matrix, s, wls_weight_matrix_mean)
 end
 
 ############################################################################
 ### methods
 ############################################################################
 
-function evaluate!(
-    objective,
-    gradient,
-    hessian,
-    semwls::SemWLS,
-    implied::SemImplySymbolic,
-    model::AbstractSemSingle,
-    par,
-)
+function evaluate!(objective, gradient, hessian, wls::SemWLS, par)
+    implied = SEM.implied(wls)
+
     if !isnothing(hessian) && (MeanStruct(implied) === HasMeanStruct)
         error("hessian of WLS with meanstructure is not available")
     end
 
-    V = semwls.V
+    V = wls.V
     ∇σ = implied.∇Σ
 
     σ = implied.Σ
-    σₒ = semwls.σₒ
+    σₒ = wls.σₒ
     σ₋ = σₒ - σ
 
     isnothing(objective) || (objective = dot(σ₋, V, σ₋))
@@ -129,18 +141,17 @@ function evaluate!(
         gradient .*= -2
     end
     isnothing(hessian) || (mul!(hessian, ∇σ' * V, ∇σ, 2, 0))
-    if !isnothing(hessian) && (HessianEval(semwls) === ExactHessian)
-        ∇²Σ_function! = implied.∇²Σ_function
+    if !isnothing(hessian) && (HessianEval(wls) === ExactHessian)
         ∇²Σ = implied.∇²Σ
-        J = -2 * (σ₋' * semwls.V)'
-        ∇²Σ_function!(∇²Σ, J, par)
+        J = -2 * (σ₋' * wls.V)'
+        implied.∇²Σ_eval!(∇²Σ, J, par)
         hessian .+= ∇²Σ
     end
     if MeanStruct(implied) === HasMeanStruct
         μ = implied.μ
-        μₒ = obs_mean(observed(model))
+        μₒ = obs_mean(observed(wls))
         μ₋ = μₒ - μ
-        V_μ = semwls.V_μ
+        V_μ = wls.V_μ
         if !isnothing(objective)
             objective += dot(μ₋, V_μ, μ₋)
         end
@@ -156,5 +167,15 @@ end
 ### Recommended methods
 ############################################################################################
 
-update_observed(lossfun::SemWLS, observed::SemObserved; kwargs...) =
-    SemWLS(; observed = observed, kwargs...)
+function update_observed(
+    lossfun::SemWLS,
+    observed::SemObserved;
+    implied::SemImplied,
+    kwargs...,
+)
+    if size(lossfun.Σ⁻¹) == size(obs_cov(observed))
+        return lossfun # no change
+    else
+        return SemWLS(observed, implied; kwargs...)
+    end
+end

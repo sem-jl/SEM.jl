@@ -5,10 +5,10 @@ struct SemObservedMissingPattern{T, S}
     measured_mask::BitVector    # measured vars mask
     miss_mask::BitVector        # missing vars mask
     rows::Vector{Int}           # rows in original data
-    data::Matrix{T}             # non-missing submatrix of data
+    data::Matrix{T}             # non-missing submatrix of data (vars × observations)
 
     measured_mean::Vector{S}    # means of measured vars
-    measured_cov::Matrix{S}     # covariance of measured vars
+    measured_cov::Symmetric{S, Matrix{S}} # covariance of measured vars
 end
 
 function SemObservedMissingPattern(
@@ -32,9 +32,9 @@ function SemObservedMissingPattern(
         measured_mask,
         .!measured_mask,
         rows,
-        pat_data,
+        permutedims(pat_data),
         dropdims(pat_mean, dims = 1),
-        pat_cov,
+        Symmetric(pat_cov),
     )
 end
 

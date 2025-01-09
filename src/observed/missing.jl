@@ -2,17 +2,6 @@
 ### Types
 ############################################################################################
 
-# Type to store Expectation Maximization result --------------------------------------------
-mutable struct EmMVNModel{A, b, B}
-    Σ::A
-    μ::b
-    fitted::B
-end
-
-# FIXME type unstable
-obs_mean(em::EmMVNModel) = ifelse(em.fitted, em.μ, nothing)
-obs_cov(em::EmMVNModel) = ifelse(em.fitted, em.Σ, nothing)
-
 """
 For observed data with missing values.
 
@@ -35,18 +24,18 @@ For observed data with missing values.
 - `nobserved_vars(::SemObservedMissing)` -> number of observed variables
 
 - `samples(::SemObservedMissing)` -> data matrix (contains both measured and missing values)
-- `em_model(::SemObservedMissing)` -> `EmMVNModel` that contains the covariance matrix and mean vector found via expectation maximization
 
 ## Implementation
 Subtype of `SemObserved`
 """
-struct SemObservedMissing{T <: Real, S <: Real, E <: EmMVNModel} <: SemObserved
+struct SemObservedMissing{T <: Real, S <: Real} <: SemObserved
     data::Matrix{Union{T, Missing}}
     observed_vars::Vector{Symbol}
     nsamples::Int
     patterns::Vector{SemObservedMissingPattern{T, S}}
 
-    em_model::E
+    obs_cov::Matrix{S}
+    obs_mean::Vector{S}
 end
 
 ############################################################################################
@@ -79,26 +68,17 @@ function SemObservedMissing(;
     ]
     sort!(patterns, by = nmissed_vars)
 
-    # allocate EM model (but don't fit)
-    em_model = EmMVNModel(zeros(nobs_vars, nobs_vars), zeros(nobs_vars), false)
+    em_cov, em_mean = em_mvn(patterns; kwargs...)
 
     return SemObservedMissing(
         convert(Matrix{Union{nonmissingtype(eltype(data)), Missing}}, data),
         obs_vars,
         nsamples,
         patterns,
-        em_model,
+        em_cov,
+        em_mean,
     )
 end
 
-############################################################################################
-### Recommended methods
-############################################################################################
-
-############################################################################################
-### Additional methods
-############################################################################################
-
-em_model(observed::SemObservedMissing) = observed.em_model
-obs_mean(observed::SemObservedMissing) = obs_mean(em_model(observed))
-obs_cov(observed::SemObservedMissing) = obs_cov(em_model(observed))
+obs_cov(observed::SemObservedMissing) = observed.obs_cov
+obs_mean(observed::SemObservedMissing) = observed.obs_mean

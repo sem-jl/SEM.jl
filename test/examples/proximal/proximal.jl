@@ -1,3 +1,5 @@
+using StructuralEquationModels, Test, ProximalCore, ProximalAlgorithms, ProximalOperators
+
 @testset "Ridge" begin
     include("ridge.jl")
 end

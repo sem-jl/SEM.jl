@@ -8,44 +8,38 @@ function test_gradient(model, params; rtol = 1e-10, atol = 0)
     @test nparams(model) == length(params)
 
     true_grad = FiniteDiff.finite_difference_gradient(Base.Fix1(objective!, model), params)
-    gradient = similar(params)
 
-    # F and G
-    fill!(gradient, NaN)
-    gradient!(gradient, model, params)
-    @test gradient ≈ true_grad rtol = rtol atol = atol
+    gradient_G = fill!(similar(params), NaN)
+    gradient!(gradient_G, model, params)
+    gradient_FG = fill!(similar(params), NaN)
+    objective_gradient!(gradient_FG, model, params)
 
-    # only G
-    fill!(gradient, NaN)
-    objective_gradient!(gradient, model, params)
-    @test gradient ≈ true_grad rtol = rtol atol = atol
+    @test gradient_G == gradient_FG
+
+    #@info "G norm = $(norm(gradient_G - true_grad, Inf))"
+    @test gradient_G ≈ true_grad rtol = rtol atol = atol
 end
 
 function test_hessian(model, params; rtol = 1e-4, atol = 0)
     true_hessian =
         FiniteDiff.finite_difference_hessian(Base.Fix1(objective!, model), params)
-    hessian = similar(params, size(true_hessian))
-    gradient = similar(params)
+    gradient = fill!(similar(params), NaN)
 
-    # H
-    fill!(hessian, NaN)
-    hessian!(hessian, model, params)
-    @test hessian ≈ true_hessian rtol = rtol atol = atol
+    hessian_H = fill!(similar(parent(true_hessian)), NaN)
+    hessian!(hessian_H, model, params)
 
-    # F and H
-    fill!(hessian, NaN)
-    objective_hessian!(hessian, model, params)
-    @test hessian ≈ true_hessian rtol = rtol atol = atol
+    hessian_FH = fill!(similar(hessian_H), NaN)
+    objective_hessian!(hessian_FH, model, params)
 
-    # G and H
-    fill!(hessian, NaN)
-    gradient_hessian!(gradient, hessian, model, params)
-    @test hessian ≈ true_hessian rtol = rtol atol = atol
+    hessian_GH = fill!(similar(hessian_H), NaN)
+    gradient_hessian!(gradient, hessian_GH, model, params)
 
-    # F, G and H
-    fill!(hessian, NaN)
-    objective_gradient_hessian!(gradient, hessian, model, params)
-    @test hessian ≈ true_hessian rtol = rtol atol = atol
+    hessian_FGH = fill!(similar(hessian_H), NaN)
+    objective_gradient_hessian!(gradient, hessian_FGH, model, params)
+
+    @test hessian_H == hessian_FH == hessian_GH == hessian_FGH
+
+    @test hessian_H ≈ true_hessian rtol = rtol atol = atol
 end
 
 fitmeasure_names_ml = Dict(

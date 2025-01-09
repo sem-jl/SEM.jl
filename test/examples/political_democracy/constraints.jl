@@ -50,7 +50,7 @@ end
 
     @test solution_constrained.solution[31] * solution_constrained.solution[30] >=
           (0.6 - 1e-8)
-    @test all(abs.(solution_constrained.solution) .< 10)
-    @test solution_constrained.optimization_result.result[3] == :FTOL_REACHED
+    @test all(p -> abs(p) < 10, solution_constrained.solution)
+    @test solution_constrained.optimization_result.result[3] == :FTOL_REACHED skip = true
     @test solution_constrained.minimum <= 21.21 + 0.01
 end

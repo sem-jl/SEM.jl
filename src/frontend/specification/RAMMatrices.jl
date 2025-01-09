@@ -22,34 +22,23 @@ vars(ram::RAMMatrices) = ram.vars
 isobserved_var(ram::RAMMatrices, i::Integer) = ram.F.colptr[i+1] > ram.F.colptr[i]
 islatent_var(ram::RAMMatrices, i::Integer) = ram.F.colptr[i+1] == ram.F.colptr[i]
 
-# indices of observed variables in the order as they appear in ram.F rows
-function observed_var_indices(ram::RAMMatrices)
-    obs_inds = Vector{Int}(undef, nobserved_vars(ram))
-    @inbounds for i in 1:nvars(ram)
-        colptr = ram.F.colptr[i]
-        if ram.F.colptr[i+1] > colptr # is observed
-            obs_inds[ram.F.rowval[colptr]] = i
-        end
-    end
-    return obs_inds
-end
+# indices of observed variables, for order=:rows (default), the order is as they appear in ram.F rows
+# if order=:columns, the order is as they appear in the comined variables list (ram.F columns)
+observed_var_indices(ram::RAMMatrices; order::Symbol = :rows) =
+    nzcols_eachrow_to_col(ram.F; order)
 
 latent_var_indices(ram::RAMMatrices) = [i for i in axes(ram.F, 2) if islatent_var(ram, i)]
 
-# observed variables in the order as they appear in ram.F rows
-function observed_vars(ram::RAMMatrices)
+# observed variables, if order=:rows, the order is as they appear in ram.F rows
+# if order=:columns, the order is as they appear in the comined variables list (ram.F columns)
+function observed_vars(ram::RAMMatrices; order::Symbol = :rows)
+    order ∈ [:rows, :columns] ||
+        throw(ArgumentError("order kwarg should be :rows or :cols"))
     if isnothing(ram.vars)
         @warn "Your RAMMatrices do not contain variable names. Please make sure the order of variables in your data is correct!"
         return nothing
     else
-        obs_vars = Vector{Symbol}(undef, nobserved_vars(ram))
-        @inbounds for (i, v) in enumerate(vars(ram))
-            colptr = ram.F.colptr[i]
-            if ram.F.colptr[i+1] > colptr # is observed
-                obs_vars[ram.F.rowval[colptr]] = v
-            end
-        end
-        return obs_vars
+        return nzcols_eachrow_to_col(Base.Fix1(getindex, vars(ram)), ram.F; order = order)
     end
 end
 
@@ -60,6 +49,17 @@ function latent_vars(ram::RAMMatrices)
     else
         return [col for (i, col) in enumerate(ram.vars) if islatent_var(ram, i)]
     end
+end
+
+function variance_params(ram::RAMMatrices)
+    S_diaginds = Set(diagind(ram.S))
+    varparams = Vector{Symbol}()
+    for (i, param) in enumerate(ram.params)
+        if any(∈(S_diaginds), param_occurences(ram.S, i))
+            push!(varparams, param)
+        end
+    end
+    return unique!(varparams)
 end
 
 ############################################################################################
@@ -113,6 +113,17 @@ function RAMMatrices(;
     return RAMMatrices(A, S, F, M, copy(params), vars)
 end
 
+# copy RAMMatrices replacing the parameters vector
+# (e.g. when reordering parameters or adding new parameters to the ensemble model)
+RAMMatrices(ram::RAMMatrices; params::AbstractVector{Symbol}) = RAMMatrices(;
+    A = materialize(ram.A, SEM.params(ram)),
+    S = materialize(ram.S, SEM.params(ram)),
+    F = copy(ram.F),
+    M = !isnothing(ram.M) ? materialize(ram.M, SEM.params(ram)) : nothing,
+    params,
+    vars = ram.vars,
+)
+
 ############################################################################################
 ### get RAMMatrices from parameter table
 ############################################################################################
@@ -133,8 +144,10 @@ function RAMMatrices(
         @assert length(partable.sorted_vars) == nvars(partable)
         vars_sorted = copy(partable.sorted_vars)
     else
-        vars_sorted = [partable.observed_vars
-                       partable.latent_vars]
+        vars_sorted = [
+            partable.observed_vars
+            partable.latent_vars
+        ]
     end
 
     # indices of the vars (A/S/M rows or columns)
@@ -216,13 +229,14 @@ function RAMMatrices(
         sort!(M_consts, by = first)
     end
 
-    return RAMMatrices(ParamsMatrix{T}(A_inds, A_consts, (n_vars, n_vars)),
-                       ParamsMatrix{T}(S_inds, S_consts, (n_vars, n_vars)),
-                       sparse(1:n_observed,
-                              [vars_index[var] for var in partable.observed_vars],
-                              ones(T, n_observed), n_observed, n_vars),
-                       !isnothing(M_inds) ? ParamsVector{T}(M_inds, M_consts, (n_vars,)) : nothing,
-                       params, vars_sorted)
+    return RAMMatrices(
+        ParamsMatrix{T}(A_inds, A_consts, (n_vars, n_vars)),
+        ParamsMatrix{T}(S_inds, S_consts, (n_vars, n_vars)),
+        eachrow_to_col(T, [vars_index[var] for var in partable.observed_vars], n_vars),
+        !isnothing(M_inds) ? ParamsVector{T}(M_inds, M_consts, (n_vars,)) : nothing,
+        params,
+        vars_sorted,
+    )
 end
 
 Base.convert(
@@ -230,6 +244,19 @@ Base.convert(
     partable::ParameterTable;
     params::Union{AbstractVector{Symbol}, Nothing} = nothing,
 ) = RAMMatrices(partable; params)
+
+# reorders the observed variables in the RAMMatrices, i.e. the order of the rows in F
+function reorder_observed_vars!(ram::RAMMatrices, new_order::AbstractVector{Symbol})
+    # just check that it's 1-to-1
+    src2dest = source_to_dest_perm(
+        observed_vars(ram),
+        new_order,
+        one_to_one = true,
+        entities = "observed variables",
+    )
+    copy!(ram.F, ram.F[src2dest, :])
+    return ram
+end
 
 ############################################################################################
 ### get parameter table from RAMMatrices
@@ -360,10 +387,7 @@ function append_rows!(
             arr_ix = arr_ixs[arr.linear_indices[j]]
             skip_symmetric && (arr_ix ∈ visited_indices) && continue
 
-            push!(
-                partable,
-                partable_row(par, arr_ix, arr_name, varnames, free = true),
-            )
+            push!(partable, partable_row(par, arr_ix, arr_name, varnames, free = true))
             if skip_symmetric
                 # mark index and its symmetric as visited
                 push!(visited_indices, arr_ix)

@@ -4,6 +4,8 @@
 ### Types
 ############################################################################################
 """
+    SemConstant{C <: Number} <: AbstractLoss
+
 Constant loss term. Can be used for comparability to other packages.
 
 # Constructor
@@ -15,37 +17,21 @@ Constant loss term. Can be used for comparability to other packages.
 
 # Examples
 ```julia
-    my_constant = SemConstant(constant_loss = 42.0)
+    my_constant = SemConstant(42.0)
 ```
-
-# Interfaces
-Analytic gradients and hessians are available.
-
-# Extended help
-## Implementation
-Subtype of `SemLossFunction`.
 """
-struct SemConstant{C} <: SemLossFunction
+struct SemConstant{C <: Number} <: AbstractLoss
     hessianeval::ExactHessian
     c::C
+
+    SemConstant(c::Number) = new{typeof(c)}(ExactHessian(), c)
 end
 
-############################################################################################
-### Constructors
-############################################################################################
+SemConstant(; constant_loss::Number, kwargs...) = SemConstant(constant_loss)
 
-function SemConstant(; constant_loss, kwargs...)
-    return SemConstant(ExactHessian(), constant_loss)
-end
-
-############################################################################################
-### methods
-############################################################################################
-
-objective(constant::SemConstant, model::AbstractSem, par) = constant.c
-gradient(constant::SemConstant, model::AbstractSem, par) = zero(par)
-hessian(constant::SemConstant, model::AbstractSem, par) =
-    zeros(eltype(par), length(par), length(par))
+objective(constant::SemConstant, par) = convert(eltype(par), constant.c)
+gradient(constant::SemConstant, par) = zero(par)
+hessian(constant::SemConstant, par) = zeros(eltype(par), length(par), length(par))
 
 ############################################################################################
 ### Recommended methods

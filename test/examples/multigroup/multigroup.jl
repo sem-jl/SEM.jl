@@ -1,5 +1,5 @@
 using StructuralEquationModels, Test, FiniteDiff
-using LinearAlgebra: diagind, LowerTriangular
+using LinearAlgebra: diagind, LowerTriangular, isposdef, logdet, tr
 
 const SEM = StructuralEquationModels
 
@@ -71,10 +71,8 @@ specification_g2 = RAMMatrices(;
     vars = [:x1, :x2, :x3, :x4, :x5, :x6, :x7, :x8, :x9, :visual, :textual, :speed],
 )
 
-partable = EnsembleParameterTable(
-    :Pasteur => specification_g1,
-    :Grant_White => specification_g2
-)
+partable =
+    EnsembleParameterTable(:Pasteur => specification_g1, :Grant_White => specification_g2)
 
 specification_miss_g1 = nothing
 specification_miss_g2 = nothing
@@ -88,7 +86,8 @@ start_test = [
     fill(0.05, 3)
     fill(0.01, 3)
 ]
-semoptimizer = SemOptimizerOptim
+
+semoptimizer = SemOptimizerOptim()
 
 @testset "RAMMatrices | constructor | Optim" begin
     include("build_models.jl")
@@ -171,7 +170,6 @@ start_test = [
     0.01
     0.05
 ]
-semoptimizer = SemOptimizerOptim
 
 @testset "Graph → Partable → RAMMatrices | constructor | Optim" begin
     include("build_models.jl")

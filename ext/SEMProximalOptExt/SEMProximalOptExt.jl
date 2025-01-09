@@ -1,6 +1,6 @@
 module SEMProximalOptExt
 
-using StructuralEquationModels
+using StructuralEquationModels, Printf
 using ProximalCore, ProximalAlgorithms, ProximalOperators
 
 export SemOptimizerProximal

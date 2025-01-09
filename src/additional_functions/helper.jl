@@ -21,14 +21,14 @@ function make_onelement_array(A)
 end
  =#
 
-function semvec(observed, imply, loss, optimizer)
+function semvec(observed, implied, loss, optimizer)
     observed = make_onelement_array(observed)
-    imply = make_onelement_array(imply)
+    implied = make_onelement_array(implied)
     loss = make_onelement_array(loss)
     optimizer = make_onelement_array(optimizer)
 
-    #sem_vec = Array{AbstractSem}(undef, maximum(length.([observed, imply, loss, optimizer])))
-    sem_vec = Sem.(observed, imply, loss, optimizer)
+    #sem_vec = Array{AbstractSem}(undef, maximum(length.([observed, implied, loss, optimizer])))
+    sem_vec = Sem.(observed, implied, loss, optimizer)
 
     return sem_vec
 end
@@ -53,16 +53,10 @@ function remove_all_missing(data::AbstractMatrix)
     return data[keep, :], keep
 end
 
-function batch_inv!(fun, model)
-    for i in 1:size(fun.inverses, 1)
-        fun.inverses[i] .= LinearAlgebra.inv!(fun.choleskys[i])
-    end
-end
-
 #=
 function batch_sym_inv_update!(fun::Union{LossFunction, DiffFunction}, model)
     M_inv = inv(fun.choleskys[1])
-    for i = 1:size(fun.inverses, 1)
+    for i in 1:size(fun.inverses, 1)
         if size(model.observed.patterns_not[i]) == 0
             fun.inverses[i] .= M_inv
         else
@@ -128,6 +122,39 @@ function elimination_matrix(n::Integer)
         end
     end
     return L
+end
+
+# vector of lower-triangular values of a square matrix
+function vech(A::AbstractMatrix{T}) where {T}
+    size(A, 1) == size(A, 2) ||
+        throw(ArgumentError("Matrix must be square, $(size(A)) given"))
+    n = size(A, 1)
+    v = Vector{T}(undef, (n * (n + 1)) >> 1)
+    k = 0
+    for (j, Aj) in enumerate(eachcol(A)), i in j:n
+        @inbounds v[k+=1] = Aj[i]
+    end
+    @assert k == length(v)
+    return v
+end
+
+# vector of lower-triangular linear indices of a nXn square matrix
+function vechinds(n::Integer)
+    A_lininds = LinearIndices((n, n))
+    v = Vector{Int}(undef, (n * (n + 1)) >> 1)
+    k = 0
+    for j in 1:n, i in j:n
+        @inbounds v[k+=1] = A_lininds[i, j]
+    end
+    @assert k == length(v)
+    return v
+end
+
+# vector of lower-triangular linear indices of a square matrix
+function vechinds(A::AbstractMatrix)
+    size(A, 1) == size(A, 2) ||
+        throw(ArgumentError("Matrix must be square, $(size(A)) given"))
+    return vechinds(size(A, 1))
 end
 
 # returns the vector of non-unique values in the order of appearance

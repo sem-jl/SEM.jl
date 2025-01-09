@@ -1,6 +1,6 @@
 # RAMMatrices interface
 
-Models can also be specified by an object of type `RAMMatrices`. 
+Models can also be specified by an object of type `RAMMatrices`.
 The RAM (reticular action model) specification corresponds to three matrices; the `A` matrix containing all directed parameters, the `S` matrix containing all undirected parameters, and the `F` matrix filtering out latent variables from the model implied covariance.
 
 The model implied covariance matrix for the observed variables of a SEM is then computed as
@@ -56,9 +56,9 @@ A =[0  0  0  0  0  0  0  0  0  0  0     1.0   0     0
 θ = Symbol.(:θ, 1:31)
 
 spec = RAMMatrices(;
-    A = A, 
-    S = S, 
-    F = F, 
+    A = A,
+    S = S,
+    F = F,
     params = θ,
     colnames = [:x1, :x2, :x3, :y1, :y2, :y3, :y4, :y5, :y6, :y7, :y8, :ind60, :dem60, :dem65]
 )
@@ -71,9 +71,9 @@ model = Sem(
 
 Let's look at this step by step:
 
-First, we specify the `A`, `S` and `F`-Matrices. 
-For a free parameter, we write a `Symbol` like `:θ1` (or any other symbol we like) to the corresponding place in the respective matrix, to constrain parameters to be equal we just use the same `Symbol` in the respective entries. 
-To fix a parameter (as in the `A`-Matrix above), we just write down the number we want to fix it to. 
+First, we specify the `A`, `S` and `F`-Matrices.
+For a free parameter, we write a `Symbol` like `:θ1` (or any other symbol we like) to the corresponding place in the respective matrix, to constrain parameters to be equal we just use the same `Symbol` in the respective entries.
+To fix a parameter (as in the `A`-Matrix above), we just write down the number we want to fix it to.
 All other entries are 0.
 
 Second, we specify a vector of symbols containing our parameters:
@@ -82,14 +82,14 @@ Second, we specify a vector of symbols containing our parameters:
 θ = Symbol.(:θ, 1:31)
 ```
 
-Third, we construct an object of type `RAMMatrices`, passing our matrices and parameters, as well as the column names of our matrices. 
+Third, we construct an object of type `RAMMatrices`, passing our matrices and parameters, as well as the column names of our matrices.
 Those are quite important, as they will be used to rearrange your data to match it to your `RAMMatrices` specification.
 
 ```julia
 spec = RAMMatrices(;
-    A = A, 
-    S = S, 
-    F = F, 
+    A = A,
+    S = S,
+    F = F,
     params = θ,
     colnames = [:x1, :x2, :x3, :y1, :y2, :y3, :y4, :y5, :y6, :y7, :y8, :ind60, :dem60, :dem65]
 )
@@ -109,7 +109,7 @@ According to the RAM, model implied mean values of the observed variables are co
 ```math
 \mu = F(I-A)^{-1}M
 ```
-where `M` is a vector of mean parameters. To estimate the means of the observed variables in our example (and set the latent means to `0`), we would specify the model just as before but add 
+where `M` is a vector of mean parameters. To estimate the means of the observed variables in our example (and set the latent means to `0`), we would specify the model just as before but add
 
 ```julia
 ...
@@ -128,5 +128,5 @@ spec = RAMMatrices(;
 
 ## Convert from and to ParameterTables
 
-To convert a RAMMatrices object to a ParameterTable, simply use `partable = ParameterTable(ram_matrices)`. 
+To convert a RAMMatrices object to a ParameterTable, simply use `partable = ParameterTable(ram_matrices)`.
 To convert an object of type `ParameterTable` to RAMMatrices, you can use `ram_matrices = RAMMatrices(partable)`.

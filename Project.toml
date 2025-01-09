@@ -13,8 +13,10 @@ LineSearches = "d3d80556-e9d4-5f37-9878-2ab0fcc64255"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NLSolversBase = "d41bc354-129a-5804-8e4c-c37616107c6c"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+PackageExtensionCompat = "65ce6f38-6b18-4e1d-a461-8949797d7930"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
@@ -46,7 +48,9 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 test = ["Test"]
 
 [weakdeps]
+BlackBoxOptim = "a134a8b2-14d6-55f6-9291-3336d3ab0209"
 NLopt = "76087f3c-5699-56af-9a33-bf431cd00edd"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
 ProximalAlgorithms = "140ffc9f-1907-541a-a177-7475e0a401e9"
 ProximalCore = "dc4f5ac2-75d1-4f31-931e-60435d74994b"
 ProximalOperators = "a725b495-10eb-56fe-b38b-717eba820537"
@@ -54,3 +58,4 @@ ProximalOperators = "a725b495-10eb-56fe-b38b-717eba820537"
 [extensions]
 SEMNLOptExt = "NLopt"
 SEMProximalOptExt = ["ProximalCore", "ProximalAlgorithms", "ProximalOperators"]
+SEMBlackBoxOptimExt = ["BlackBoxOptim", "Optimisers"]
