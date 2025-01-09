@@ -54,9 +54,14 @@ function Base.show(io::IO, struct_inst::SemOptimizerProximal)
     print_field_types(io, struct_inst)
 end
 
-## connect do ProximalAlgorithms.jl as backend
-ProximalCore.gradient!(grad, model::AbstractSem, parameters) =
-    objective_gradient!(grad, model::AbstractSem, parameters)
+## connect to ProximalAlgorithms.jl
+function ProximalAlgorithms.value_and_gradient(model::AbstractSem, params)
+    grad = similar(params)
+    obj = SEM.evaluate!(zero(eltype(params)), grad, nothing, model, params)
+    return obj, grad
+end
+
+#ProximalCore.prox!(y, f, x, gamma) = ProximalOperators.prox!(y, f, x, gamma)
 
 mutable struct ProximalResult
     result::Any
